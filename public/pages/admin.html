@@ -170,7 +170,19 @@ window.editAnnouncement = async (id) => {
       if (overlay) overlay.classList.remove('modal-overlay--visible');
     }
 
-          window.deleteAnnouncement = async (id) => {
+window.deleteRoom = async (id) => {
+            if (confirm('Delete room?')) {
+              try {
+                await apiFetch(`/rooms/${id}`, { method: 'DELETE' });
+                showToast('Room deleted!');
+                loadData();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            }
+          };
+
+window.deleteAnnouncement = async (id) => {
             if (confirm('Delete?')) {
               try {
                 await apiFetch(`/announcements/${id}`, { method: 'DELETE' });
@@ -182,22 +194,6 @@ window.editAnnouncement = async (id) => {
             }
           };
 
-          document.getElementById('add-ann-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const data = {
-              title: document.getElementById('new-ann-title').value.trim(),
-              content: document.getElementById('new-ann-content').value.trim()
-            };
-            if (!data.title || !data.content) return showToast('Fill all fields');
-            try {
-              await apiFetch('/announcements', { method: 'POST', body: JSON.stringify(data) });
-              showToast('Published!');
-              document.getElementById('add-ann-form').reset();
-              loadData();
-            } catch (err) {
-              showToast(err.message, 'error');
-            }
-          });
         </script>
             </table>
           </div>
@@ -276,7 +272,6 @@ window.editAnnouncement = async (id) => {
                   <th>Image</th>
                   <th>Name / #</th>
                   <th>Capacity</th>
-                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -322,13 +317,7 @@ window.editAnnouncement = async (id) => {
               <label>Description</label>
               <textarea id="edit-description" rows="3"></textarea>
             </div>
-            <div class="form-group full">
-              <label>Status</label>
-              <select id="edit-active">
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
-              </select>
-            </div>
+
             <div class="modal__actions">
               <button type="button" class="btn btn--outline" id="edit-cancel-btn">Cancel</button>
               <button type="submit" class="btn btn--primary">Save Changes</button>
@@ -454,9 +443,8 @@ function renderRooms() {
           <td>${r.imageUrl ? `<img src="${r.imageUrl}" class="room-thumb" alt="Room">` : '—'}</td>
           <td><strong>${r.name}</strong><br><small>${r.number}</small></td>
           <td>${r.capacity}</td>
-          <td><span class="badge ${r.isActive ? 'success' : 'danger'}">${r.isActive ? 'Active' : 'Inactive'}</span></td>
           <td>
-            <button class="btn btn--outline btn-sm" onclick="editRoom('${r._id}')">Edit</button>
+            <button class="btn btn--danger btn-sm" onclick="deleteRoom('${r._id}')">Delete</button>
           </td>
         </tr>
       `).join('');
@@ -484,7 +472,6 @@ function renderRooms() {
         document.getElementById('edit-number').value = editingRoom.number;
         document.getElementById('edit-capacity').value = editingRoom.capacity;
         document.getElementById('edit-description').value = editingRoom.description || '';
-        document.getElementById('edit-active').value = editingRoom.isActive;
 
         editImageBase64 = null;
         const preview = document.getElementById('edit-preview');
@@ -574,8 +561,7 @@ function renderRooms() {
         number: document.getElementById('edit-number').value,
         capacity: parseInt(document.getElementById('edit-capacity').value),
         imageUrl: editImageBase64 || document.getElementById('edit-imageUrl').value,
-        description: document.getElementById('edit-description').value,
-        isActive: document.getElementById('edit-active').value === 'true'
+        description: document.getElementById('edit-description').value
       };
 
       try {
