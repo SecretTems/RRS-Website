@@ -28,6 +28,48 @@
       <div class="tabs">
         <button class="tab-btn active" data-tab="pending">Pending Bookings</button>
         <button class="tab-btn" data-tab="rooms">Manage Rooms</button>
+        <button class="tab-btn" data-tab="announcements">Manage Announcements</button>
+      </div>
+
+      <!-- Manage Announcements Tab -->
+      <div class="tab-panel" id="announcements">
+        <div class="admin-section">
+          <h3 class="section-title">Add New Announcement</h3>
+          <form id="add-ann-form" class="form-grid">
+            <div class="form-group full">
+              <label>Title</label>
+              <input type="text" id="new-ann-title" required maxlength="150" />
+            </div>
+            <div class="form-group full">
+              <label>Content</label>
+              <textarea id="new-ann-content" rows="5" required maxlength="2000" placeholder="Announcement content..."></textarea>
+            </div>
+            <div style="grid-column:1/-1;">
+              <button type="submit" class="btn btn--primary" style="justify-self:end;">Publish</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="room-list">
+          <h3 class="section-title">Existing Announcements</h3>
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Author</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="ann-list">
+                <tr>
+                  <td colspan="4" class="text-center">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- Pending Bookings Tab -->
@@ -197,14 +239,17 @@
     // Load data
     async function loadData() {
       try {
-        const [pendingRes, roomsRes] = await Promise.all([
+        const [pendingRes, roomsRes, annRes] = await Promise.all([
           apiFetch('/bookings/pending'),
-          apiFetch('/rooms')
+          apiFetch('/rooms'),
+          apiFetch('/announcements')
         ]);
         pendingBookings = pendingRes.data;
         rooms = roomsRes.data;
+        announcements = annRes.data;
         renderPending();
         renderRooms();
+        renderAnnouncements();
         document.getElementById('pending-count').textContent = pendingBookings.length;
         document.getElementById('room-count').textContent = rooms.length;
       } catch (err) {

@@ -110,7 +110,7 @@
               <div id="comments-${ann._id}" class="comments-list"></div>
               ${user ? `<div class="comment-form">
                 <textarea id="comment-text-${ann._id}" placeholder="Add a comment..." maxlength="500"></textarea>
-                <button onclick="addComment('${ann._id}', event)" class="btn btn--primary btn-sm">Comment</button>
+      <button onclick="addComment('${ann._id}', event); event.stopPropagation();" class="btn btn--primary btn-sm">Comment</button>
               </div>` : ''}
             </div>
           </article>
@@ -125,6 +125,7 @@
     }
 
     list.addEventListener('click', async (e) => {
+      e.stopPropagation();
       const btn = e.target.closest('[data-action]');
       if (btn && user) {
         const action = btn.dataset.action;
@@ -138,7 +139,7 @@
         } catch (err) {
           showToast(err.message, 'error');
         }
-        return; // stop propagation
+        return;
       }
     });
 
