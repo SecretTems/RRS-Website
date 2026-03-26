@@ -301,7 +301,8 @@
     };
 
     // Close modal
-    document.getElementById('edit-close-btn').onclick = () => {
+    const editCloseBtn = document.getElementById('edit-close-btn');
+    if (editCloseBtn) editCloseBtn.onclick = () => {
       document.getElementById('edit-modal-overlay').classList.remove('modal-overlay--visible');
     };
     document.getElementById('edit-cancel-btn').onclick = () => {
