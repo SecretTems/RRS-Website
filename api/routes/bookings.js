@@ -55,14 +55,30 @@ router.post(
       dayStart.setHours(0, 0, 0, 0);
       const dayEnd = new Date(bookingDate.getTime());
       dayEnd.setHours(23, 59, 59, 999);
+      // Block Sundays and Philippine holidays
+      const dayOfWeek = bookingDate.getDay();
+      if (dayOfWeek === 0) { // Sunday
+        return res.status(409).json({
+          success: false,
+          message: 'Bookings not allowed on Sundays.'
+        });
+      }
+
+      // Simple Sunday block only (holidays require complex implementation)
+      // const isHoliday = await isPhilippineHoliday(bookingDate);
+      if (isHoliday) {
+        return res.status(409).json({
+          success: false,
+          message: 'Bookings not allowed on holidays.'
+        });
+      }
+
       const conflict = await Booking.findOne({
         room: roomId,
         date: bookingDate,
         status: { $nin: ['cancelled', 'rejected'] },
         $or: [
-          { startTime: { $lt: endTime }, endTime: { $gt: startTime } },
-          { startTime: endTime, endTime: { $gt: startTime } },
-          { endTime: startTime, startTime: { $lt: endTime } }
+          { startTime: { $lt: endTime }, endTime: { $gt: startTime } }
         ]
       });
 

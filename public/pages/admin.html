@@ -54,6 +54,9 @@
           </form>
         </div>
 
+<div class="admin-search">
+          <input id="ann-search" placeholder="Search announcements..." class="rooms-search__input" />
+        </div>
         <div class="room-list">
           <h3 class="section-title">Existing Announcements</h3>
           <div class="table-container">
@@ -92,8 +95,80 @@
           }
 
 window.editAnnouncement = async (id) => {
-      window.open(`/pages/admin-edit-ann.html?id=${id}`, 'editAnn', 'width=650,height=550,scrollbars=yes,resizable=yes');
+      const overlay = document.getElementById('edit-ann-modal-overlay') || createEditAnnModal();
+      editingAnnId = id;
+      loadEditAnnData();
+      overlay.classList.add('modal-overlay--visible');
     };
+
+    let editingAnnId = null;
+
+    function createEditAnnModal() {
+      const overlay = document.createElement('div');
+      overlay.id = 'edit-ann-modal-overlay';
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal" style="max-width:600px;">
+          <h2 class="modal__title">Edit Announcement</h2>
+          <form id="edit-ann-modal-form">
+            <div class="form-group full">
+              <label>Title</label>
+              <input id="edit-ann-modal-title" required maxlength="150" />
+            </div>
+            <div class="form-group full">
+              <label>Content</label>
+              <textarea id="edit-ann-modal-content" rows="6" required maxlength="2000"></textarea>
+            </div>
+            <div class="modal__actions">
+              <button type="button" class="btn btn--outline" onclick="closeEditAnnModal()">Cancel</button>
+              <button type="submit" class="btn btn--primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.onclick = (e) => {
+        if (e.target.id === 'edit-ann-modal-overlay') closeEditAnnModal();
+      };
+      document.getElementById('edit-ann-modal-form').onsubmit = handleEditAnnSubmit;
+      return overlay;
+    }
+
+    async function loadEditAnnData() {
+      try {
+        const res = await apiFetch('/announcements');
+        const ann = res.data.find(a => a._id === editingAnnId);
+        if (ann) {
+          document.getElementById('edit-ann-modal-title').value = ann.title;
+          document.getElementById('edit-ann-modal-content').value = ann.content;
+        }
+      } catch (err) {
+        showToast('Error loading: ' + err.message, 'error');
+        closeEditAnnModal();
+      }
+    }
+
+    function handleEditAnnSubmit(e) {
+      e.preventDefault();
+      const data = {
+        title: document.getElementById('edit-ann-modal-title').value.trim(),
+        content: document.getElementById('edit-ann-modal-content').value.trim()
+      };
+      if (!data.title || !data.content) return showToast('Fill all fields');
+      apiFetch(`/announcements/${editingAnnId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }).then(() => {
+        showToast('Updated!');
+        loadData();
+        closeEditAnnModal();
+      }).catch(err => showToast('Error: ' + err.message, 'error'));
+    }
+
+    function closeEditAnnModal() {
+      const overlay = document.getElementById('edit-ann-modal-overlay');
+      if (overlay) overlay.classList.remove('modal-overlay--visible');
+    }
 
           window.deleteAnnouncement = async (id) => {
             if (confirm('Delete?')) {
@@ -189,6 +264,9 @@ window.editAnnouncement = async (id) => {
           </form>
         </div>
 
+<div class="admin-search">
+          <input id="room-search" placeholder="Search rooms..." class="rooms-search__input" />
+        </div>
         <div class="room-list">
           <h3 class="section-title">Existing Rooms</h3>
           <div class="table-container">
@@ -364,9 +442,14 @@ let pendingBookings = [];
       }
     };
 
-    function renderRooms() {
+function renderRooms() {
+      const searchTerm = document.getElementById('room-search')?.value.toLowerCase() || '';
+      const filtered = rooms.filter(r => 
+        r.name.toLowerCase().includes(searchTerm) || 
+        r.number.toLowerCase().includes(searchTerm)
+      );
       const tbody = document.getElementById('room-list');
-      tbody.innerHTML = rooms.map(r => `
+      tbody.innerHTML = filtered.map(r => `
         <tr>
           <td>${r.imageUrl ? `<img src="${r.imageUrl}" class="room-thumb" alt="Room">` : '—'}</td>
           <td><strong>${r.name}</strong><br><small>${r.number}</small></td>
@@ -378,6 +461,14 @@ let pendingBookings = [];
         </tr>
       `).join('');
     }
+
+    // Search listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      const annSearch = document.getElementById('ann-search');
+      if (annSearch) annSearch.oninput = renderAnnouncements;
+      const roomSearch = document.getElementById('room-search');
+      if (roomSearch) roomSearch.oninput = renderRooms;
+    });
 
     /* Edit Room Modal */
     let editingRoom = null;
@@ -580,10 +671,15 @@ let pendingBookings = [];
     });
 
 // Announcement render function (now global)
-    function renderAnnouncements() {
+function renderAnnouncements() {
+      const searchTerm = document.getElementById('ann-search')?.value.toLowerCase() || '';
+      const filtered = announcements.filter(ann => 
+        ann.title.toLowerCase().includes(searchTerm) || 
+        ann.author.username.toLowerCase().includes(searchTerm)
+      );
       const tbody = document.getElementById('ann-list');
-      if (!tbody || !announcements) return;
-      tbody.innerHTML = announcements.map(ann => `
+      if (!tbody) return;
+      tbody.innerHTML = filtered.map(ann => `
         <tr>
           <td style="max-width:300px;">${escapeHtml(ann.title)}</td>
           <td>${escapeHtml(ann.author.username)}</td>
@@ -649,8 +745,18 @@ let pendingBookings = [];
     loadData();
   </script>
 
-  <style>
+<style>
     .admin-dashboard { max-width: 1200px; margin: 0 auto; }
+    .admin-search { margin-bottom: 1rem; }
+    #edit-ann-modal-overlay .form-group { margin-bottom: 1rem; }
+    #edit-ann-modal-overlay .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; }
+    #edit-ann-modal-overlay .form-group input, #edit-ann-modal-overlay .form-group textarea { 
+      width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); 
+      border-radius: var(--radius-sm); color: var(--color-white); font-size: 1rem; 
+    }
+    #edit-ann-modal-overlay .form-group input::placeholder, #edit-ann-modal-overlay .form-group textarea::placeholder { 
+      color: rgba(255,255,255,0.4); 
+    }
     .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
     .admin-title { font-family: var(--font-heading); font-size: 1.8rem; color: var(--color-primary); margin: 0; }
     .admin-stats { display: flex; gap: 1rem; }
