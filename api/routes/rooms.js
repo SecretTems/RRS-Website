@@ -103,7 +103,7 @@ router.put(
     body('number').optional().trim().notEmpty().withMessage('Room number is required'),
     body('capacity').optional().isInt({ min: 1 }),
     body('description').optional(),
-    body('imageUrl').optional().isLength({ max: 500 })
+    body('imageUrl').optional()
   ],
   async (req, res) => {
     const errors = validationResult(req);
