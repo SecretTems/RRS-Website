@@ -109,6 +109,53 @@
           </div>
         </div>
       </div>
+
+      <!-- Edit Room Modal -->
+      <div class="modal-overlay" id="edit-modal-overlay">
+        <div class="modal">
+          <h2 class="modal__title">Edit Room</h2>
+          <button class="close-btn" id="edit-close-btn">&times;</button>
+          <form id="edit-room-form" class="form-grid">
+            <input type="hidden" id="edit-id" />
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" id="edit-name" required />
+            </div>
+            <div class="form-group">
+              <label>Number</label>
+              <input type="text" id="edit-number" required />
+            </div>
+            <div class="form-group">
+              <label>Capacity</label>
+              <input type="number" id="edit-capacity" min="1" />
+            </div>
+            <div class="form-group full">
+              <label>Image</label>
+              <div class="upload-area" id="edit-upload">
+                <div class="upload-area__icon">🖼️</div>
+                <div class="upload-area__text">Drop image or paste URL</div>
+                <input type="url" id="edit-imageUrl" class="hidden" />
+              </div>
+              <div id="edit-preview" class="image-preview"></div>
+            </div>
+            <div class="form-group full">
+              <label>Description</label>
+              <textarea id="edit-description" rows="3"></textarea>
+            </div>
+            <div class="form-group full">
+              <label>Status</label>
+              <select id="edit-active">
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </div>
+            <div class="modal__actions">
+              <button type="button" class="btn btn--outline" id="edit-cancel-btn">Cancel</button>
+              <button type="submit" class="btn btn--primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -219,6 +266,177 @@
       `).join('');
     }
 
+    /* Edit Room Modal */
+    let editingRoom = null;
+    let editImageBase64 = null;
+
+    window.editRoom = async (id) => {
+      try {
+        editingRoom = rooms.find(r => r._id === id);
+        if (!editingRoom) return;
+
+        document.getElementById('edit-id').value = id;
+        document.getElementById('edit-name').value = editingRoom.name;
+        document.getElementById('edit-number').value = editingRoom.number;
+        document.getElementById('edit-capacity').value = editingRoom.capacity;
+        document.getElementById('edit-description').value = editingRoom.description || '';
+        document.getElementById('edit-active').value = editingRoom.isActive;
+
+        editImageBase64 = null;
+        const preview = document.getElementById('edit-preview');
+        if (editingRoom.imageUrl) {
+          preview.innerHTML = `<img src="${editingRoom.imageUrl}" class="image-preview__img" />`;
+          preview.style.display = 'flex';
+        } else {
+          preview.style.display = 'none';
+        }
+
+        document.getElementById('edit-modal-overlay').classList.add('modal-overlay--visible');
+      } catch (err) {
+        showToast('Error loading room: ' + err.message, 'error');
+      }
+    };
+
+    // Close modal
+    document.getElementById('edit-close-btn').onclick = () => {
+      document.getElementById('edit-modal-overlay').classList.remove('modal-overlay--visible');
+    };
+    document.getElementById('edit-cancel-btn').onclick = () => {
+      document.getElementById('edit-modal-overlay').classList.remove('modal-overlay--visible');
+    };
+    document.getElementById('edit-modal-overlay').onclick = (e) => {
+      if (e.target.id === 'edit-modal-overlay') {
+        document.getElementById('edit-modal-overlay').classList.remove('modal-overlay--visible');
+      }
+    };
+
+    // Edit upload drag-drop (reuse logic)
+    const editUpload = document.getElementById('edit-upload');
+    const editImageInput = document.getElementById('edit-imageUrl');
+    const editPreview = document.getElementById('edit-preview');
+
+    editUpload.addEventListener('click', () => editImageInput.click());
+    editUpload.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      editUpload.style.borderColor = 'var(--color-primary)';
+    });
+    editUpload.addEventListener('dragleave', () => {
+      editUpload.style.borderColor = '';
+    });
+    editUpload.addEventListener('drop', (e) => {
+      e.preventDefault();
+      editUpload.style.borderColor = '';
+      const file = e.dataTransfer.files[0];
+      if (file) processEditImageFile(file);
+    });
+    editImageInput.addEventListener('change', () => {
+      if (editImageInput.files[0]) processEditImageFile(editImageInput.files[0]);
+    });
+    editImageInput.addEventListener('input', (e) => {
+      if (e.target.value) {
+        editImageBase64 = null;
+        editPreview.innerHTML = '';
+        editPreview.style.display = 'flex';
+      }
+    });
+
+    function processEditImageFile(file) {
+      if (!file.type.startsWith('image/')) return showToast('Image only.', 'error');
+      if (file.size > 2 * 1024 * 1024) return showToast('Under 2MB.', 'error');
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        editImageBase64 = e.target.result;
+        const img = document.createElement('img');
+        img.src = editImageBase64;
+        img.className = 'image-preview__img';
+        editPreview.innerHTML = '';
+        editPreview.appendChild(img);
+        editPreview.appendChild(document.createTextNode('Preview'));
+        editPreview.style.display = 'flex';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Edit form submit
+    document.getElementById('edit-room-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!editingRoom) return;
+
+      const data = {
+        name: document.getElementById('edit-name').value,
+        number: document.getElementById('edit-number').value,
+        capacity: parseInt(document.getElementById('edit-capacity').value),
+        imageUrl: editImageBase64 || document.getElementById('edit-imageUrl').value,
+        description: document.getElementById('edit-description').value,
+        isActive: document.getElementById('edit-active').value === 'true'
+      };
+
+      try {
+        await apiFetch(`/rooms/${editingRoom._id}`, {
+          method: 'PUT',
+          body: JSON.stringify(data)
+        });
+        showToast('Room updated!', 'success');
+        document.getElementById('edit-modal-overlay').classList.remove('modal-overlay--visible');
+        loadData();
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    });
+
+    /* Photo upload for new room */
+    const newUpload = document.getElementById('new-upload');
+    const newImageInput = document.getElementById('new-imageUrl');
+    const newPreview = document.getElementById('new-preview');
+    let newImageBase64 = null;
+
+    newUpload.addEventListener('click', () => newImageInput.click());
+    newUpload.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      newUpload.style.borderColor = 'var(--color-primary)';
+    });
+    newUpload.addEventListener('dragleave', () => {
+      newUpload.style.borderColor = '';
+    });
+    newUpload.addEventListener('drop', (e) => {
+      e.preventDefault();
+      newUpload.style.borderColor = '';
+      const file = e.dataTransfer.files[0];
+      if (file) processNewImageFile(file);
+    });
+    newImageInput.addEventListener('change', () => {
+      if (newImageInput.files[0]) processNewImageFile(newImageInput.files[0]);
+    });
+    newImageInput.addEventListener('input', (e) => {
+      if (e.target.value) {
+        newImageBase64 = null;
+        newPreview.style.display = 'none';
+      }
+    });
+
+    function processNewImageFile(file) {
+      if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file.', 'error');
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('Image must be under 2MB.', 'error');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        newImageBase64 = e.target.result;
+        const img = document.createElement('img');
+        img.src = newImageBase64;
+        img.className = 'image-preview__img';
+        newPreview.innerHTML = '';
+        newPreview.appendChild(img);
+        newPreview.appendChild(document.createTextNode('Preview'));
+        newPreview.style.display = 'flex';
+      };
+      reader.readAsDataURL(file);
+    }
+
     // Add Room Form
     const addForm = document.getElementById('add-room-form');
     addForm.addEventListener('submit', async (e) => {
@@ -227,13 +445,15 @@
         name: document.getElementById('new-name').value,
         number: document.getElementById('new-number').value,
         capacity: parseInt(document.getElementById('new-capacity').value),
-        imageUrl: document.getElementById('new-imageUrl').value,
+        imageUrl: newImageBase64 || document.getElementById('new-imageUrl').value,
         description: document.getElementById('new-description').value
       };
       try {
         await apiFetch('/rooms', { method: 'POST', body: JSON.stringify(data) });
         showToast('Room added!', 'success');
         addForm.reset();
+        newPreview.style.display = 'none';
+        newImageBase64 = null;
         loadData();
       } catch (err) {
         showToast('Error: ' + err.message, 'error');

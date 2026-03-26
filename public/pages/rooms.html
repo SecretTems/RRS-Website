@@ -58,11 +58,11 @@
         <div class="booking-form__row">
           <div class="booking-form__group">
             <label class="booking-form__label">Start Time</label>
-            <input class="booking-form__input" type="time" id="booking-start" required />
+            <input class="booking-form__input" type="time" id="booking-start" required min="07:00" max="19:00" />
           </div>
           <div class="booking-form__group">
             <label class="booking-form__label">End Time</label>
-            <input class="booking-form__input" type="time" id="booking-end" required />
+            <input class="booking-form__input" type="time" id="booking-end" required min="07:00" max="19:00" />
           </div>
         </div>
         <p class="auth-form__error-msg" id="booking-time-error"></p>

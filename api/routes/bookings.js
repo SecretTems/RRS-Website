@@ -25,11 +25,11 @@ router.post(
     body('roomId').notEmpty().withMessage('Room is required'),
     body('date').isISO8601().withMessage('Valid date is required'),
     body('startTime')
-      .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
-      .withMessage('Start time must be HH:MM'),
+      .matches(/^0[7-9]|1[0-9]:[0-5]\d$/)
+      .withMessage('Start time must be 07:00-19:00'),
     body('endTime')
-      .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
-      .withMessage('End time must be HH:MM')
+      .matches(/^0[7-9]|1[0-9]:[0-5]\d$/)
+      .withMessage('End time must be 07:00-19:00')
       .custom((value, { req }) => {
         if (value <= req.body.startTime) throw new Error('End time must be after start time');
         return true;
