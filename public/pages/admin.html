@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RRS — Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+<body>
+  <main class="page">
+    <div class="admin-dashboard">
+      <header class="admin-header">
+        <h1 class="admin-title">Admin Dashboard</h1>
+        <div class="admin-stats">
+          <div class="stat-card">
+            <div class="stat-number" id="pending-count">0</div>
+            <div class="stat-label">Pending Bookings</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="room-count">0</div>
+            <div class="stat-label">Rooms</div>
+          </div>
+        </div>
+      </header>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="pending">Pending Bookings</button>
+        <button class="tab-btn" data-tab="rooms">Manage Rooms</button>
+      </div>
+
+      <!-- Pending Bookings Tab -->
+      <div class="tab-panel active" id="pending">
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Room</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Purpose</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pending-list">
+              <tr>
+                <td colspan="6" class="text-center">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Manage Rooms Tab -->
+      <div class="tab-panel" id="rooms">
+        <div class="admin-section">
+          <h3 class="section-title">Add New Room</h3>
+          <form id="add-room-form" class="form-grid">
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" id="new-name" required />
+            </div>
+            <div class="form-group">
+              <label>Number</label>
+              <input type="text" id="new-number" required />
+            </div>
+            <div class="form-group">
+              <label>Capacity</label>
+              <input type="number" id="new-capacity" min="1" value="30" />
+            </div>
+            <div class="form-group full">
+              <label>Image URL</label>
+              <div class="upload-area" id="new-upload">
+                <div class="upload-area__icon">🖼️</div>
+                <div class="upload-area__text">Drop image or paste URL</div>
+                <input type="url" id="new-imageUrl" class="hidden" placeholder="https://..." />
+              </div>
+              <div id="new-preview" class="image-preview"></div>
+            </div>
+            <div class="form-group full">
+              <label>Description</label>
+              <textarea id="new-description" rows="3" placeholder="Room description..."></textarea>
+            </div>
+            <button type="submit" class="btn btn--primary">Add Room</button>
+          </form>
+        </div>
+
+        <div class="room-list">
+          <h3 class="section-title">Existing Rooms</h3>
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Image</th>
+                  <th>Name / #</th>
+                  <th>Capacity</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="room-list">
+                <tr>
+                  <td colspan="5" class="text-center">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <span>© Copyright PHINMA Araullo University. All Rights Reserved.</span>
+  </footer>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="../js/utils.js"></script>
+  <script src="../js/navbar.js"></script>
+  <script>
+    injectNavbar('admin');
+    const user = requireAuth();
+    if (!getIsAdmin()) {
+      showToast('Admin access required.', 'error');
+      window.location.href = '/pages/account.html';
+      throw new Error('Not admin');
+    }
+
+    let pendingBookings = [];
+    let rooms = [];
+
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabPanels.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Load data
+    async function loadData() {
+      try {
+        const [pendingRes, roomsRes] = await Promise.all([
+          apiFetch('/bookings/pending'),
+          apiFetch('/rooms')
+        ]);
+        pendingBookings = pendingRes.data;
+        rooms = roomsRes.data;
+        renderPending();
+        renderRooms();
+        document.getElementById('pending-count').textContent = pendingBookings.length;
+        document.getElementById('room-count').textContent = rooms.length;
+      } catch (err) {
+        showToast('Failed to load data: ' + err.message, 'error');
+      }
+    }
+
+    function renderPending() {
+      const tbody = document.getElementById('pending-list');
+      if (!pendingBookings.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8">No pending bookings.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = pendingBookings.map(b => `
+        <tr>
+          <td>${b.user.username || b.user.email}</td>
+          <td>${b.room.name} (${b.room.number})</td>
+          <td>${new Date(b.date).toLocaleDateString()}</td>
+          <td>${b.startTime} - ${b.endTime}</td>
+          <td>${b.purpose || '-'}</td>
+          <td>
+            <button class="btn btn--primary btn-sm mr-2" onclick="handleApprove('${b._id}')">Approve</button>
+            <button class="btn btn--danger btn-sm" onclick="handleReject('${b._id}')">Reject</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    window.handleApprove = async (id) => {
+      try {
+        await apiFetch(`/bookings/${id}/approve`, { method: 'PATCH' });
+        showToast('Booking approved!', 'success');
+        loadData();
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    };
+
+    window.handleReject = async (id) => {
+      if (!confirm('Reject this booking?')) return;
+      try {
+        await apiFetch(`/bookings/${id}/reject`, { method: 'PATCH' });
+        showToast('Booking rejected.', 'success');
+        loadData();
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    };
+
+    function renderRooms() {
+      const tbody = document.getElementById('room-list');
+      tbody.innerHTML = rooms.map(r => `
+        <tr>
+          <td>${r.imageUrl ? `<img src="${r.imageUrl}" class="room-thumb" alt="Room">` : '—'}</td>
+          <td><strong>${r.name}</strong><br><small>${r.number}</small></td>
+          <td>${r.capacity}</td>
+          <td><span class="badge ${r.isActive ? 'success' : 'danger'}">${r.isActive ? 'Active' : 'Inactive'}</span></td>
+          <td>
+            <button class="btn btn--outline btn-sm" onclick="editRoom('${r._id}')">Edit</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Add Room Form
+    const addForm = document.getElementById('add-room-form');
+    addForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        name: document.getElementById('new-name').value,
+        number: document.getElementById('new-number').value,
+        capacity: parseInt(document.getElementById('new-capacity').value),
+        imageUrl: document.getElementById('new-imageUrl').value,
+        description: document.getElementById('new-description').value
+      };
+      try {
+        await apiFetch('/rooms', { method: 'POST', body: JSON.stringify(data) });
+        showToast('Room added!', 'success');
+        addForm.reset();
+        loadData();
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    });
+
+    // Load on start
+    loadData();
+  </script>
+
+  <style>
+    .admin-dashboard { max-width: 1200px; margin: 0 auto; }
+    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+    .admin-title { font-family: var(--font-heading); font-size: 1.8rem; color: var(--color-primary); margin: 0; }
+    .admin-stats { display: flex; gap: 1rem; }
+    .stat-card { background: var(--color-sage); padding: 1rem 1.5rem; border-radius: var(--radius-md); text-align: center; min-width: 120px; }
+    .stat-number { font-size: 1.5rem; font-weight: 700; color: var(--color-primary); }
+    .stat-label { font-size: 0.8rem; color: var(--color-navy-dark); opacity: 0.8; }
+
+    .tabs { display: flex; border-bottom: 2px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem; }
+    .tab-btn { background: none; border: none; padding: 0.75rem 1.5rem; font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.6); cursor: pointer; border-bottom: 2px solid transparent; transition: color var(--transition); }
+    .tab-btn.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .admin-section, .room-list { margin-bottom: 2rem; }
+    .section-title { font-size: 1.2rem; margin-bottom: 1rem; color: var(--color-primary); }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group { }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+    .form-group input, .form-group textarea { width: 100%; padding: 0.75rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-sm); color: var(--color-white); }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(255,255,255,0.4); }
+
+    .table-container { background: rgba(255,255,255,0.05); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .admin-table { width: 100%; border-collapse: collapse; }
+    .admin-table th, .admin-table td { padding: 1rem 0.75rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .admin-table th { font-weight: 600; color: rgba(255,255,255,0.7); }
+    .text-center { text-align: center; }
+    .py-8 { padding: 2rem 0; }
+
+    .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+    .mr-2 { margin-right: 0.5rem; }
+    .badge { padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .badge.success { background: var(--color-green); color: white; }
+    .badge.danger { background: var(--color-red); color: white; }
+
+    .room-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: var(--radius-sm); }
+
+    .hidden { display: none; }
+  </style>
+</body>
+</html>

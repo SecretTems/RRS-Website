@@ -3,7 +3,7 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const Booking = require('../models/Booking');
 const Room = require('../models/Room');
-const { protect } = require('../middleware/auth');
+const { protect, adminOnly } = require('../middleware/auth');
 
 // GET /api/bookings/my - get current user's bookings
 router.get('/my', protect, async (req, res) => {
@@ -49,24 +49,27 @@ router.post(
         return res.status(404).json({ success: false, message: 'Room not found.' });
       }
 
+      // Check for time conflicts on exact date
       const bookingDate = new Date(date);
-      const dayStart = new Date(bookingDate.setHours(0, 0, 0, 0));
-      const dayEnd = new Date(bookingDate.setHours(23, 59, 59, 999));
-
-      // Check for conflicts
+      const dayStart = new Date(bookingDate.getTime());
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(bookingDate.getTime());
+      dayEnd.setHours(23, 59, 59, 999);
       const conflict = await Booking.findOne({
         room: roomId,
-        date: { $gte: dayStart, $lte: dayEnd },
-        status: { $in: ['confirmed', 'occupied'] },
+        date: bookingDate,
+        status: { $nin: ['cancelled', 'rejected'] },
         $or: [
-          { startTime: { $lt: endTime }, endTime: { $gt: startTime } }
+          { startTime: { $lt: endTime }, endTime: { $gt: startTime } },
+          { startTime: endTime, endTime: { $gt: startTime } },
+          { endTime: startTime, startTime: { $lt: endTime } }
         ]
       });
 
       if (conflict) {
         return res.status(409).json({
           success: false,
-          message: `Room is already booked from ${conflict.startTime} to ${conflict.endTime}.`
+          message: `Conflict with existing booking from ${conflict.startTime} to ${conflict.endTime}. Choose different time slots.`
         });
       }
 
@@ -76,8 +79,8 @@ router.post(
         date: new Date(date),
         startTime,
         endTime,
-        purpose: purpose || '',
-        status: 'confirmed'
+        purpose: purpose || ''
+        // status defaults to 'pending'
       });
 
       await booking.populate('room', 'name number');
@@ -88,7 +91,51 @@ router.post(
   }
 );
 
-// DELETE /api/bookings/:id - cancel a booking
+// GET /api/bookings/pending - admin only
+router.get('/pending', protect, adminOnly, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ status: 'pending' })
+      .populate('user', 'username email')
+      .populate('room', 'name number')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: bookings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+});
+
+// PATCH /api/bookings/:id/approve - admin only
+router.patch('/:id/approve', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking || booking.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Invalid booking or already processed.' });
+    }
+    booking.status = 'confirmed';
+    await booking.save();
+    await booking.populate('room', 'name number');
+    res.json({ success: true, data: booking });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+});
+
+// PATCH /api/bookings/:id/reject - admin only
+router.patch('/:id/reject', protect, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking || booking.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Invalid booking or already processed.' });
+    }
+    booking.status = 'cancelled';
+    await booking.save();
+    res.json({ success: true, message: 'Booking rejected.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+});
+
+// DELETE /api/bookings/:id - cancel a booking (user or admin)
 router.delete('/:id', protect, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);

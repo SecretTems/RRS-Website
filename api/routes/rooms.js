@@ -93,6 +93,45 @@ router.post(
   }
 );
 
+// PUT /api/rooms/:id - admin only: update room
+router.put(
+  '/:id',
+  protect,
+  adminOnly,
+  [
+    body('name').optional().trim().notEmpty().withMessage('Room name is required'),
+    body('number').optional().trim().notEmpty().withMessage('Room number is required'),
+    body('capacity').optional().isInt({ min: 1 }),
+    body('description').optional(),
+    body('imageUrl').optional().isLength({ max: 500 })
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    try {
+      const room = await Room.findByIdAndUpdate(
+        req.params.id,
+        { $set: req.body },
+        { new: true, runValidators: true }
+      );
+
+      if (!room) {
+        return res.status(404).json({ success: false, message: 'Room not found.' });
+      }
+
+      res.json({ success: true, data: room });
+    } catch (err) {
+      if (err.code === 11000) {
+        return res.status(400).json({ success: false, message: 'Room name or number already exists.' });
+      }
+      res.status(500).json({ success: false, message: 'Server error.' });
+    }
+  }
+);
+
 // DELETE /api/rooms/:id - admin only
 router.delete('/:id', protect, adminOnly, async (req, res) => {
   try {

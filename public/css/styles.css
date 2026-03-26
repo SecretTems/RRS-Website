@@ -1123,6 +1123,41 @@ input, textarea, select { font-family: var(--font-body); outline: none; }
 
 .auth-form__error-msg--visible { display: block; }
 
+.auth-form__password-wrapper {
+  position: relative;
+}
+
+.auth-form__password-toggle {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem;
+  opacity: 0.6;
+  transition: opacity var(--transition);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-form__password-toggle:hover { opacity: 1; }
+
+.auth-form__password-toggle svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--color-navy);
+  fill: none;
+  stroke-width: 1.8;
+}
+
+.auth-form__input[ type="text" ] + .auth-form__password-toggle svg:last-child { display: none; }
+.auth-form__input[ type="password" ] + .auth-form__password-toggle svg:first-child { display: none; }
+
 .auth-form__submit {
   margin-top: 1.4rem;
   width: 100%;

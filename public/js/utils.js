@@ -34,6 +34,11 @@ function clearUser() {
   localStorage.removeItem('rrs_token');
 }
 
+function getIsAdmin() {
+  const user = getUser();
+  return user?.role === 'admin';
+}
+
 function requireAuth() {
   const user = getUser();
   if (!user) {

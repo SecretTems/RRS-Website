@@ -19,7 +19,8 @@ function injectNavbar(activePage) {
     <div class="navbar__nav" id="navbar-nav">
       <a href="/pages/announcements.html" class="navbar__link" data-page="announcements">Announcements</a>
       <a href="/pages/schedule.html" class="navbar__link" data-page="schedule">Schedule</a>
-      <a href="/pages/rooms.html" class="navbar__link" data-page="rooms">Rooms</a>
+    <a href="/pages/rooms.html" class="navbar__link" data-page="rooms">Rooms</a>
+${getIsAdmin() ? '      <a href="/pages/admin.html" class="navbar__link" data-page="admin">Admin</a>' : ''}
     </div>
 
     <a href="/pages/account.html" class="navbar__avatar" id="navbar-avatar" title="Account">
