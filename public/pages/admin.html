@@ -18,9 +18,13 @@
             <div class="stat-number" id="pending-count">0</div>
             <div class="stat-label">Pending Bookings</div>
           </div>
-          <div class="stat-card">
+<div class="stat-card">
             <div class="stat-number" id="room-count">0</div>
             <div class="stat-label">Rooms</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="ann-count">0</div>
+            <div class="stat-label">Announcements</div>
           </div>
         </div>
       </header>
@@ -62,11 +66,80 @@
                   <th>Actions</th>
                 </tr>
               </thead>
-              <tbody id="ann-list">
+<tbody id="ann-list">
                 <tr>
                   <td colspan="4" class="text-center">Loading...</td>
                 </tr>
               </tbody>
+            </table>
+          </div>
+        </div>
+
+        <script>
+          function renderAnnouncements() {
+            const tbody = document.getElementById('ann-list');
+            tbody.innerHTML = announcements.map(ann => `
+              <tr>
+                <td style="max-width:300px;">${escapeHtml(ann.title)}</td>
+                <td>${escapeHtml(ann.author.username)}</td>
+                <td>${new Date(ann.createdAt).toLocaleDateString()}</td>
+                <td>
+                  <button class="btn btn--outline btn-sm" onclick="editAnnouncement('${ann._id}')">Edit</button>
+                  <button class="btn btn--danger btn-sm" onclick="deleteAnnouncement('${ann._id}')">Delete</button>
+                </td>
+              </tr>
+            `).join('') || '<tr><td colspan="4" class="text-center">No announcements.</td></tr>';
+          }
+
+          window.editAnnouncement = async (id) => {
+            const ann = announcements.find(a => a._id === id);
+            if (confirm('Edit?')) {
+              const newTitle = prompt('Title:', ann.title);
+              const newContent = prompt('Content:', ann.content);
+              if (newTitle && newContent) {
+                try {
+                  await apiFetch(`/announcements/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ title: newTitle, content: newContent })
+                  });
+                  showToast('Updated!');
+                  loadData();
+                } catch (err) {
+                  showToast(err.message);
+                }
+              }
+            }
+          };
+
+          window.deleteAnnouncement = async (id) => {
+            if (confirm('Delete?')) {
+              try {
+                await apiFetch(`/announcements/${id}`, { method: 'DELETE' });
+                showToast('Deleted!');
+                loadData();
+              } catch (err) {
+                showToast(err.message);
+              }
+            }
+          };
+
+          document.getElementById('add-ann-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+              title: document.getElementById('new-ann-title').value.trim(),
+              content: document.getElementById('new-ann-content').value.trim()
+            };
+            if (!data.title || !data.content) return showToast('Fill all fields');
+            try {
+              await apiFetch('/announcements', { method: 'POST', body: JSON.stringify(data) });
+              showToast('Published!');
+              document.getElementById('add-ann-form').reset();
+              loadData();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        </script>
             </table>
           </div>
         </div>
@@ -221,8 +294,15 @@
       throw new Error('Not admin');
     }
 
-    let pendingBookings = [];
+let pendingBookings = [];
     let rooms = [];
+    let announcements = [];
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
 
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabPanels = document.querySelectorAll('.tab-panel');
@@ -249,7 +329,8 @@
         announcements = annRes.data;
         renderPending();
         renderRooms();
-        renderAnnouncements();
+        if (typeof renderAnnouncements === 'function') renderAnnouncements();
+        document.getElementById('ann-count').textContent = announcements.length;
         document.getElementById('pending-count').textContent = pendingBookings.length;
         document.getElementById('room-count').textContent = rooms.length;
       } catch (err) {
@@ -511,6 +592,72 @@
         loadData();
       } catch (err) {
         showToast('Error: ' + err.message, 'error');
+      }
+    });
+
+// Announcement render function (now global)
+    function renderAnnouncements() {
+      const tbody = document.getElementById('ann-list');
+      if (!tbody || !announcements) return;
+      tbody.innerHTML = announcements.map(ann => `
+        <tr>
+          <td style="max-width:300px;">${escapeHtml(ann.title)}</td>
+          <td>${escapeHtml(ann.author.username)}</td>
+          <td>${new Date(ann.createdAt).toLocaleDateString()}</td>
+          <td>
+            <button class="btn btn--outline btn-sm" onclick="editAnnouncement('${ann._id}')">Edit</button>
+            <button class="btn btn--danger btn-sm" onclick="deleteAnnouncement('${ann._id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="4" class="text-center">No announcements.</td></tr>';
+    }
+
+    window.editAnnouncement = async (id) => {
+      const ann = announcements.find(a => a._id === id);
+      if (confirm('Edit?')) {
+        const newTitle = prompt('Title:', ann.title);
+        const newContent = prompt('Content:', ann.content);
+        if (newTitle && newContent) {
+          try {
+            await apiFetch(`/announcements/${id}`, {
+              method: 'PUT',
+              body: JSON.stringify({ title: newTitle, content: newContent })
+            });
+            showToast('Updated!');
+            loadData();
+          } catch (err) {
+            showToast(err.message);
+          }
+        }
+      }
+    };
+
+    window.deleteAnnouncement = async (id) => {
+      if (confirm('Delete?')) {
+        try {
+          await apiFetch(`/announcements/${id}`, { method: 'DELETE' });
+          showToast('Deleted!');
+          loadData();
+        } catch (err) {
+          showToast(err.message);
+        }
+      }
+    };
+
+    document.getElementById('add-ann-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        title: document.getElementById('new-ann-title').value.trim(),
+        content: document.getElementById('new-ann-content').value.trim()
+      };
+      if (!data.title || !data.content) return showToast('Fill all fields');
+      try {
+        await apiFetch('/announcements', { method: 'POST', body: JSON.stringify(data) });
+        showToast('Published!');
+        document.getElementById('add-ann-form').reset();
+        loadData();
+      } catch (err) {
+        showToast(err.message, 'error');
       }
     });
 
