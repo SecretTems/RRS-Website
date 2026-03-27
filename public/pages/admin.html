@@ -439,7 +439,9 @@ function renderRooms() {
     };
     document.getElementById('edit-ann-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!editingAnnId) return showToast('No announcement selected', 'error');
+      const id = document.getElementById('edit-ann-id').value || editingAnnId;
+      if (!id) return showToast('No announcement selected', 'error');
+
       const data = {
         title: document.getElementById('edit-ann-title').value.trim(),
         content: document.getElementById('edit-ann-content').value.trim()
@@ -639,10 +641,12 @@ function renderAnnouncements() {
       const ann = announcements.find(a => a._id === id);
       if (!ann) return showToast('Announcement not found', 'error');
       editingAnnId = id;
+      document.getElementById('edit-ann-id').value = id;
       document.getElementById('edit-ann-title').value = ann.title;
       document.getElementById('edit-ann-content').value = ann.content;
       document.getElementById('edit-ann-modal-overlay').classList.add('modal-overlay--visible');
     };
+
 
 
     window.deleteAnnouncement = async (id) => {
