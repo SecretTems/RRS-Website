@@ -132,33 +132,79 @@ router.delete('/delete-account', protect, async (req, res) => {
   }
 });
 
-// Send email utility (for development, logs to console. Update with real SMTP in production)
+// Send reset email - console.log for dev/debug, real SMTP for production
 async function sendResetEmail(email, token, req) {
-  const resetUrl = `${req.protocol}://${req.get('host')}/reset-password.html?token=${token}&email=${email}`;
+  const resetUrl = `${req.protocol}://${req.get('host')}/pages/reset-password.html?token=${token}&email=${email}`;
   
   const message = `
-    You requested a password reset for your RRS account.
-    
-    Click this link to reset your password: ${resetUrl}
-    
-    This link expires in 15 minutes.
-    
-    If you didn't request this, ignore this email.
-  `;
+RRS Password Reset
 
-  // For dev: console.log instead of send
+You requested a password reset for your RRS account.
+
+Reset Link: ${resetUrl}
+
+This link expires in 15 minutes.
+
+If you didn't request this, ignore this email.
+  `.trim();
+
+  // Always log for debugging (Vercel function logs)
   console.log('=== PASSWORD RESET EMAIL ===');
   console.log('To:', email);
   console.log('Reset URL:', resetUrl);
-  console.log('Message:', message);
   console.log('===========================');
-  
-  // Production example (uncomment & configure .env):
-  // let transporter = nodemailer.createTransporter({
-  //   service: 'gmail',
-  //   auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-  // });
-  // await transporter.sendMail({ from: process.env.EMAIL_USER, to: email, subject: 'RRS Password Reset', text: message });
+
+  try {
+    // Production: Gmail SMTP (add EMAIL_USER, EMAIL_PASS to Vercel env vars)
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      await transporter.sendMail({
+        from: `"RRS System" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: 'RRS Password Reset',
+        text: message
+      });
+      console.log('✅ Email sent via Gmail');
+      return;
+    }
+
+    // Test fallback: Ethereal (free test emails at ethereal.email)
+    const testAccount = await nodemailer.createTestAccount();
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass
+      }
+    });
+
+    await transporter.sendMail({
+      from: '"RRS Test" <no-reply@test.com>',
+      to: email,
+      subject: 'RRS Password Reset (Test)',
+      text: message
+    });
+
+    const info = await transporter.sendMail({
+      from: '"RRS Test" <no-reply@test.com>',
+      to: email,
+      subject: 'RRS Password Reset (Test)',
+      text: message
+    });
+    console.log('📧 Test email sent via Ethereal:', nodemailer.getTestMessageUrl(info));
+  } catch (emailError) {
+    console.error('❌ Email send failed:', emailError.message);
+    // Don't fail the request - user gets success response + logs URL for manual test
+  }
 }
 
 // POST /api/auth/forgot-password
