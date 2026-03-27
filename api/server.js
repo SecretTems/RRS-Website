@@ -11,17 +11,21 @@ const app = express();
 let isConnected = false;
 async function connectDB() {
   if (isConnected) return;
-  // Ensure a database name is in the URI (inject "rrs" before query params if missing)
   let uri = process.env.MONGODB_URI || '';
-  if (uri.includes('/?')) {
+  console.log('Attempting MongoDB connection with URI:', uri ? uri.split('?')[0] + '?' : 'MONGODB_URI missing');
+  
+  // Only inject /rrs if truly needed (no db name)
+  if (uri && !uri.match(/\/[^/?\s]+\?/ ) && uri.includes('?')) {
     uri = uri.replace('/?', '/rrs?');
+    console.log('Injected /rrs database name');
   }
+  
   await mongoose.connect(uri, {
     serverSelectionTimeoutMS: 10000,
     socketTimeoutMS: 45000,
   });
   isConnected = true;
-  console.log('MongoDB connected');
+  console.log('✅ MongoDB connected');
 }
 
 // Run connection before every request
