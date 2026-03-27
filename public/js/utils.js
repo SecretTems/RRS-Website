@@ -1,21 +1,41 @@
 /*
-  RRS — Shared Utilities
+  RRS — Shared Utilities (Fixed JSON parse error)
 */
 const API_BASE = '/api';
 
-/* HTTP Helper */
+/* HTTP Helper - FIXED: Check status BEFORE json() to handle HTML error pages */
 async function apiFetch(path, options = {}) {
   const token = localStorage.getItem('rrs_token');
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' });
-  const data = await res.json();
+  const res = await fetch(`${API_BASE}${path}`, { 
+    ...options, 
+    headers, 
+    credentials: 'include' 
+  });
+
+  let data;
+  let errorMsg = 'An unknown error occurred';
 
   if (!res.ok) {
-    const msg = data.errors ? data.errors.map(e => e.msg).join(', ') : data.message || 'An error occurred.';
-    throw new Error(msg);
+    try {
+      data = await res.json();
+      errorMsg = data.errors ? 
+        data.errors.map(e => e.msg).join(', ') : 
+        data.message || 'Server responded with error';
+    } catch (parseErr) {
+      // Non-JSON response (HTML error page), use text preview
+      const text = await res.text();
+      errorMsg = text.includes('server error') ? 
+        'Server error (check console)' : 
+        text.slice(0, 100) + '...';
+    }
+    throw new Error(errorMsg);
   }
+
+  // Success path
+  data = await res.json();
   return data;
 }
 
@@ -100,7 +120,7 @@ function initNavbar(activePage) {
   }
 }
 
-/* Format Date */
+/* Format Date -->
 function formatDate(dateStr) {
   const d = new Date(dateStr);
   return `${String(d.getMonth()+1).padStart(2,'0')} / ${String(d.getDate()).padStart(2,'0')} / ${String(d.getFullYear()).slice(-2)}`;
@@ -116,9 +136,11 @@ function setLoading(btn, loading) {
   if (loading) {
     btn.disabled = true;
     btn._originalText = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner"></span>';
+    btn.innerHTML = '<span class="spinner"></span> Loading...';
   } else {
     btn.disabled = false;
     btn.innerHTML = btn._originalText || btn.innerHTML;
+    btn._originalText = null;
   }
 }
+
