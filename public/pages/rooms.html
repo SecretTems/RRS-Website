@@ -206,8 +206,10 @@
         showErr('booking-time-error', 'Please select start and end times.');
         return;
       }
-      if (end <= start) {
-        showErr('booking-time-error', 'End time must be after start time.');
+      const startMin = parseInt(start.split(':')[0]) * 60 + parseInt(start.split(':')[1]);
+      const endMin = parseInt(end.split(':')[0]) * 60 + parseInt(end.split(':')[1]);
+      if (end <= start || (endMin - startMin < 60)) {
+        showErr('booking-time-error', 'End time must be at least 1 hour after start time.');
         return;
       }
 

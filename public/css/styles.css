@@ -296,16 +296,28 @@ input, textarea, select { font-family: var(--font-body); outline: none; }
 }
 
 .ann-view-more-btn {
-  background: rgba(0,0,0,0.15);
-  color: var(--color-navy);
+  position: absolute;
+  bottom: 0.3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.9);
+  color: var(--color-navy-dark);
   border: none;
-  padding: 0.3rem 0.8rem;
-  border-radius: var(--radius-sm);
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius-lg);
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  margin-top: 0.5rem;
-  transition: background var(--transition);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: all var(--transition);
+  z-index: 1;
+}
+
+.ann-view-more-btn:hover {
+  background: var(--color-primary);
+  color: var(--color-navy);
+  transform: translateX(-50%) translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
 }
 
 .ann-view-more-btn:hover {
