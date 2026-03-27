@@ -269,11 +269,12 @@ input, textarea, select { font-family: var(--font-body); outline: none; }
 }
 
 .announcement-card__body--long {
-  max-height: 5em;
+  max-height: 6em;
   overflow: hidden;
   position: relative;
+  padding-bottom: 2.5rem;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
 }
 
@@ -300,21 +301,19 @@ input, textarea, select { font-family: var(--font-body); outline: none; }
 }
 
 .ann-view-more-btn {
-  position: absolute;
-  bottom: 0.3rem;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  display: block;
+  margin: 0.8rem auto 0;
   background: rgba(255,255,255,0.9);
   color: var(--color-navy-dark);
   border: none;
-  padding: 0.4rem 1rem;
+  padding: 0.4rem 1.2rem;
   border-radius: var(--radius-lg);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   transition: all var(--transition);
-  z-index: 1;
 }
 
 .ann-view-more-btn:hover {
