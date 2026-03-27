@@ -85,7 +85,7 @@
         const userLiked = user && ann.likes.includes(user.id);
         const userHearted = user && ann.hearts.includes(user.id);
         return `
-          <article class="announcement-card" data-id="${ann._id}" onclick="toggleDetails('${ann._id}')" style="cursor:pointer;">
+          <article class="announcement-card" data-id="${ann._id}">
             <div class="announcement-card__header">
               <div style="display:flex; align-items:center; gap:0.5rem;">
                 ${ann.author.profilePhoto ? `<img src="${ann.author.profilePhoto}" alt="${escapeHtml(ann.author.username)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">` : ''}
@@ -103,7 +103,7 @@
               <button class="announcement-card__action ${userHearted ? 'announcement-card__action--hearted' : ''}" data-action="heart" data-id="${ann._id}">
                 ❤️ <span class="heart-count">${ann.hearts.length}</span>
               </button>
-              <button class="announcement-card__action" onclick="toggleDetails('${ann._id}'); return false;" title="View comments (${ann.comments.length})">
+              <button class="announcement-card__action" onclick="toggleDetails('${ann._id}'); return false;" title="View comments (${ann.comments.length})" style="cursor:pointer;">
                 💬 <span>${ann.comments.length}</span>
               </button>
             </div>
@@ -146,7 +146,6 @@
       if (body.classList.contains('announcement-card__body--expanded')) {
         body.classList.remove('announcement-card__body--expanded');
         btn.textContent = 'View more ↓';
-        btn.nextSibling ? btn.nextSibling.remove() : null;
       } else {
         body.classList.add('announcement-card__body--expanded');
         btn.textContent = 'View less ↑';

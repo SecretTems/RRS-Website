@@ -31,9 +31,7 @@ router.post(
       .matches(/^0[7-9]|1[0-9]:[0-5]\d$/)
       .withMessage('End time must be 07:00-19:00')
       .custom((value, { req }) => {
-        const startMin = parseInt(req.body.startTime.split(':')[0]) * 60 + parseInt(req.body.startTime.split(':')[1]);
-        const endMin = parseInt(value.split(':')[0]) * 60 + parseInt(value.split(':')[1]);
-        if (value <= req.body.startTime || endMin - startMin < 60) throw new Error('End time must be at least 1 hour after start time');
+        if (value <= req.body.startTime) throw new Error('End time must be after start time');
         return true;
       })
   ],

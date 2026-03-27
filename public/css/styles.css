@@ -295,6 +295,10 @@ input, textarea, select { font-family: var(--font-body); outline: none; }
   -webkit-line-clamp: unset !important;
 }
 
+.announcement-card__body--expanded::after {
+  display: none !important;
+}
+
 .ann-view-more-btn {
   position: absolute;
   bottom: 0.3rem;
