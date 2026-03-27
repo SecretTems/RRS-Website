@@ -64,18 +64,11 @@ router.post(
         });
       }
 
-      // Simple Sunday block only (holidays require complex implementation)
-      // const isHoliday = await isPhilippineHoliday(bookingDate);
-      if (isHoliday) {
-        return res.status(409).json({
-          success: false,
-          message: 'Bookings not allowed on holidays.'
-        });
-      }
+
 
       const conflict = await Booking.findOne({
         room: roomId,
-        date: bookingDate,
+        date: { $gte: dayStart, $lte: dayEnd },
         status: { $nin: ['cancelled', 'rejected'] },
         $or: [
           { startTime: { $lt: endTime }, endTime: { $gt: startTime } }
@@ -95,8 +88,8 @@ router.post(
         date: new Date(date),
         startTime,
         endTime,
-        purpose: purpose || ''
-        // status defaults to 'pending'
+        purpose: purpose || '',
+        status: 'pending'
       });
 
       await booking.populate('room', 'name number');

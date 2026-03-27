@@ -20,7 +20,7 @@
         <button class="account__sidebar-item" data-panel="edit-profile">
           ✏️ Edit Profile
         </button>
-        <button class="account__sidebar-item" data-panel="ai-helper" onclick="return confirm('Go to AI chat?'); window.location.href='/pages/ai-chat.html'; return false;">
+        <button class="account__sidebar-item" data-panel="ai-helper" onclick="if(confirm('Go to AI chat?')) window.location.href='/pages/ai-chat.html';">
           ✨ AI Helper
         </button>
         <button class="account__sidebar-item account__sidebar-item--danger" data-panel="danger">

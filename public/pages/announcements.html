@@ -69,6 +69,7 @@
       try {
         const data = await apiFetch('/announcements');
         renderAnnouncements(data.data);
+        setTimeout(initAnnouncementToggles, 100);
       } catch (err) {
         list.innerHTML = `<div class="empty-state"><div class="empty-state__icon">❌</div><p class="empty-state__text">${err.message}</p></div>`;
       }
@@ -94,7 +95,7 @@
                 </div>
               </div>
             </div>
-            <p class="announcement-card__body">${escapeHtml(ann.content)}</p>
+            <div class="announcement-card__body" data-content="${ann.content.replace(/&/g,'&amp;').replace(/</g,'<').replace(/>/g,'>')}">${formatAnnouncementContent(ann.content)}</div>
             <div class="announcement-card__footer">
               <button class="announcement-card__action ${userLiked ? 'announcement-card__action--liked' : ''}" data-action="like" data-id="${ann._id}">
                 👍 <span class="like-count">${ann.likes.length}</span>
@@ -124,6 +125,33 @@
       d.textContent = str;
       return d.innerHTML;
     }
+
+    function formatAnnouncementContent(content) {
+      return content.replace(/\\n/g, '<br>').replace(/&/g, '&amp;').replace(/</g, '<').replace(/>/g, '>');
+    }
+
+    function initAnnouncementToggles() {
+      document.querySelectorAll('.announcement-card__body').forEach(body => {
+        const fullContent = body.dataset.content;
+        const lines = fullContent.split('\\n').length;
+        if (lines > 4 || fullContent.length > 250) {
+          body.classList.add('announcement-card__body--long');
+          body.innerHTML += '<button class="ann-view-more-btn" onclick="toggleAnnContent(this); return false;">View more ↓</button>';
+        }
+      });
+    }
+
+    window.toggleAnnContent = function(btn) {
+      const body = btn.parentElement;
+      if (body.classList.contains('announcement-card__body--expanded')) {
+        body.classList.remove('announcement-card__body--expanded');
+        btn.textContent = 'View more ↓';
+        btn.nextSibling ? btn.nextSibling.remove() : null;
+      } else {
+        body.classList.add('announcement-card__body--expanded');
+        btn.textContent = 'View less ↑';
+      }
+    };
 
     list.addEventListener('click', async (e) => {
       e.stopPropagation();

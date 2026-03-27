@@ -218,9 +218,23 @@ const HOURS = ['7am','8am','9am','10am','11am','12pm','1pm','2pm','3pm','4pm','5
     document.getElementById('calendar-grid').addEventListener('click', (e) => {
       const day = e.target.closest('[data-date]');
       if (!day) return;
-      selectedDate = new Date(day.dataset.date + 'T12:00:00');
+      const dateStr = day.dataset.date;
+      const dateObj = new Date(dateStr + 'T12:00:00');
+      if (dateObj.getDay() === 0) {
+        document.getElementById('schedule-grid').innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <div class="empty-state__icon">📅</div>
+            <p class="empty-state__text">No bookings on Sundays</p>
+            <p style="font-size:0.82rem; opacity:0.7;">Bookings are not available on Sundays. Select another date.</p>
+          </div>
+        `;
+        selectedDate = dateObj;
+        renderCalendar();
+        return;
+      }
+      selectedDate = dateObj;
       renderCalendar();
-      loadSchedule(day.dataset.date);
+      loadSchedule(dateStr);
     });
 
     // Init

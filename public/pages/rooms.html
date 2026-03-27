@@ -55,6 +55,11 @@
           <input class="booking-form__input" type="date" id="booking-date" required />
           <p class="auth-form__error-msg" id="booking-date-error"></p>
         </div>
+        <div class="booking-rules">
+          <div style="font-size:0.82rem; color:rgba(255,255,255,0.7); padding:0.6rem; background:rgba(255,255,255,0.05); border-radius:var(--radius-sm); border-left:3px solid var(--color-primary);">
+            📋 <strong>Rules:</strong> No bookings on Sundays. 7AM-7PM only. Minimum 1 hour.
+          </div>
+        </div>
         <div class="booking-form__row">
           <div class="booking-form__group">
             <label class="booking-form__label">Start Time</label>
@@ -167,11 +172,28 @@
       document.querySelectorAll('#booking-form .auth-form__error-msg').forEach(el => { el.textContent = ''; el.classList.remove('auth-form__error-msg--visible'); });
     }
 
+    // Sunday validation on date change
+    document.getElementById('booking-date').addEventListener('change', function() {
+      const dateObj = new Date(this.value);
+      if (this.value && dateObj.getDay() === 0) {
+        showErr('booking-date-error', 'No bookings allowed on Sundays.');
+      } else {
+        const errEl = document.getElementById('booking-date-error');
+        errEl.textContent = '';
+        errEl.classList.remove('auth-form__error-msg--visible');
+      }
+    });
+
     bookingForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       clearBookingErrors();
 
       const date = document.getElementById('booking-date').value;
+      const dateObj = new Date(date);
+      if (dateObj.getDay() === 0) {
+        showErr('booking-date-error', 'No bookings allowed on Sundays.');
+        return;
+      }
       const start = document.getElementById('booking-start').value;
       const end = document.getElementById('booking-end').value;
       const purpose = document.getElementById('booking-purpose').value.trim();
