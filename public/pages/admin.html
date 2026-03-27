@@ -452,7 +452,7 @@ function renderRooms() {
           method: 'PUT',
           body: JSON.stringify(data)
         });
-        
+
         showToast('Announcement updated!', 'success');
         document.getElementById('edit-ann-modal-overlay').classList.remove('modal-overlay--visible');
         loadData();
