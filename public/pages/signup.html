@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RRS — Sign Up</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-card__logo">
+        <img
+          src="../assets/logo.png"
+          alt="RRS Logo"
+          class="auth-card__logo-img"
+          onerror="this.style.display='none'; this.nextSibling.style.display='flex';"
+        />
+        <div class="auth-card__logo-fallback" style="display:none; width:44px; height:44px; border-radius:50%; background:var(--color-primary); align-items:center; justify-content:center; font-weight:900; font-size:1rem; color:var(--color-navy);">RRS</div>
+        RRS
+      </div>
+
+      <h1 class="auth-card__title">Register an Account</h1>
+      <p class="auth-required-hint">* Required fields</p>
+
+      <form id="signup-form" novalidate>
+        <div class="auth-form__group">
+          <label class="auth-form__label auth-form__label--required" for="username">Username</label>
+          <input class="auth-form__input" type="text" id="username" name="username" placeholder="Username" autocomplete="username" />
+          <p class="auth-form__error-msg" id="username-error"></p>
+        </div>
+        <div class="auth-form__group">
+          <label class="auth-form__label auth-form__label--required" for="email">Email</label>
+          <input class="auth-form__input" type="email" id="email" name="email" placeholder="Email" autocomplete="email" />
+          <p class="auth-form__error-msg" id="email-error"></p>
+        </div>
+        <div class="auth-form__group">
+          <label class="auth-form__label auth-form__label--required" for="password">Password</label>
+<div class="auth-form__password-wrapper">
+          <input class="auth-form__input" type="password" id="password" name="password" placeholder="Password" autocomplete="new-password" />
+          <button type="button" class="auth-form__password-toggle" aria-label="Toggle password visibility">
+            <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            <svg viewBox="0 0 24 24"><line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+          <p class="auth-form__error-msg" id="password-error"></p>
+        </div>
+        <div class="auth-form__group">
+          <label class="auth-form__label auth-form__label--required" for="confirm-password">Confirm Password</label>
+<div class="auth-form__password-wrapper">
+          <input class="auth-form__input" type="password" id="confirm-password" name="confirmPassword" placeholder="Password" autocomplete="new-password" />
+          <button type="button" class="auth-form__password-toggle" aria-label="Toggle password visibility">
+            <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            <svg viewBox="0 0 24 24"><line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+          <p class="auth-form__error-msg" id="confirm-error"></p>
+        </div>
+        <p class="auth-form__error-msg" id="form-error" style="margin-top:0.3rem;font-size:0.8rem;"></p>
+        <button type="submit" class="auth-form__submit" id="submit-btn">
+          Confirm
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        </button>
+      </form>
+
+      <div class="auth-card__footer">
+        Already a User? <a href="/pages/login.html">Login</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+  <script src="../js/utils.js"></script>
+  <script>
+    if (getUser()) window.location.href = '/pages/announcements.html';
+
+    const form = document.getElementById('signup-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    function clearErrors() {
+      document.querySelectorAll('.auth-form__error-msg').forEach(el => { el.textContent = ''; el.classList.remove('auth-form__error-msg--visible'); });
+      document.querySelectorAll('.auth-form__input').forEach(el => el.classList.remove('auth-form__input--error'));
+    }
+
+    function showFieldError(fieldId, errorId, msg) {
+      document.getElementById(fieldId).classList.add('auth-form__input--error');
+      const err = document.getElementById(errorId);
+      err.textContent = msg;
+      err.classList.add('auth-form__error-msg--visible');
+    }
+
+    function validateForm() {
+      clearErrors();
+      let valid = true;
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirm = document.getElementById('confirm-password').value;
+
+      if (!username || username.length < 3 || !/^[a-zA-Z0-9_]+$/.test(username)) {
+        showFieldError('username', 'username-error', 'Username must be 3+ chars, letters/numbers/underscores only.');
+        valid = false;
+      }
+      if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+        showFieldError('email', 'email-error', 'Please enter a valid email.');
+        valid = false;
+      }
+      if (!password || password.length < 8 || !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+        showFieldError('password', 'password-error', 'Min 8 characters with uppercase, lowercase, and a number.');
+        valid = false;
+      }
+      if (password !== confirm) {
+        showFieldError('confirm-password', 'confirm-error', 'Passwords do not match.');
+        valid = false;
+      }
+      return valid;
+    }
+
+    // Password toggle
+    document.querySelectorAll('.auth-form__password-toggle').forEach(toggle => {
+      const input = toggle.previousElementSibling;
+      toggle.addEventListener('click', () => {
+        const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+        input.setAttribute('type', type);
+      });
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!validateForm()) return;
+      setLoading(submitBtn, true);
+
+      try {
+        const data = await apiFetch('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: document.getElementById('username').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            password: document.getElementById('password').value,
+            confirmPassword: document.getElementById('confirm-password').value
+          })
+        });
+        setUser(data.user, data.token);
+        showToast('Account created! Welcome to RRS 🎉', 'success');
+        setTimeout(() => window.location.href = '/pages/announcements.html', 1000);
+      } catch (err) {
+        const formErr = document.getElementById('form-error');
+        formErr.textContent = err.message;
+        formErr.classList.add('auth-form__error-msg--visible');
+        setLoading(submitBtn, false);
+      }
+    });
+  </script>
+</body>
+</html>

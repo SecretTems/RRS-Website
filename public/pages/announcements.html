@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RRS — Announcements</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+<body>
+
+  <main class="page">
+    <div class="announcements" id="announcements-list">
+      <div class="empty-state">
+        <div class="empty-state__icon">⏳</div>
+        <p class="empty-state__text">Loading announcements...</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <span>© Copyright</span>
+    <span>PHINMA Araullo University.</span>
+    <span>All Rights Reserved.</span>
+  </footer>
+
+  <div class="modal-overlay" id="login-prompt-overlay">
+    <div class="modal modal--warning">
+      <div class="modal__icon">⚠️</div>
+      <h2 class="modal__title">Login Required</h2>
+      <p class="modal__text">You need to login before entering.</p>
+      <div class="modal__actions">
+        <a href="/pages/login.html" class="btn btn--primary btn--full">OK</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="../js/utils.js"></script>
+  <script src="../js/navbar.js"></script>
+  <script>
+    injectNavbar('announcements');
+    const user = requireAuth();
+    const list = document.getElementById('announcements-list');
+
+    let announcementsData = [];
+
+    async function loadAnnouncements() {
+      try {
+        const data = await apiFetch('/announcements');
+        announcementsData = data.data;
+        renderAnnouncements();
+      } catch (err) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-state__icon">❌</div><p>${err.message}</p></div>`;
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function renderAnnouncements() {
+      if (!announcementsData.length) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-state__icon">📢</div><p>No announcements yet.</p></div>`;
+        return;
+      }
+
+      list.innerHTML = announcementsData.map(ann => {
+        const userLiked = user && ann.likes.includes(user.id);
+        const userHearted = user && ann.hearts.includes(user.id);
+        const rawContent = ann.content.replace(/\\\\n/g, '\n');
+        const isLong = rawContent.length > 250 || rawContent.split('\n').length > 4;
+        const displayContent = isLong ? rawContent.slice(0, 250) + '...' : rawContent;
+
+        return `
+          <article class="announcement-card" data-id="${ann._id}">
+            <div class="announcement-card__header">
+              <div style="display:flex;align-items:center,gap:0.5rem;">
+                ${ann.author.profilePhoto ? `<img src="${ann.author.profilePhoto}" alt="${escapeHtml(ann.author.username)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">` : ''}
+                <div>
+                  <h2 class="announcement-card__title">${escapeHtml(ann.title)}</h2>
+                  <span class="announcement-card__date">${escapeHtml(ann.author.username)} • ${formatDate(ann.createdAt)}</span>
+                </div>
+              </div>
+            </div>
+            <div class="announcement-card__body-wrapper ${isLong ? 'announcement-card__body--long' : ''}" data-full="${escapeHtml(rawContent)}">
+              <div class="announcement-card__body" style="white-space:pre-line;">${escapeHtml(displayContent)}</div>
+              ${isLong ? '<button class="ann-view-more-btn">View more ↓</button>' : ''}
+            </div>
+            <div class="announcement-card__footer">
+              <button class="announcement-card__action ${userLiked ? 'announcement-card__action--liked' : ''}" data-action="like" data-id="${ann._id}">
+                👍 <span class="like-count">${ann.likes.length}</span>
+              </button>
+              <button class="announcement-card__action ${userHearted ? 'announcement-card__action--hearted' : ''}" data-action="heart" data-id="${ann._id}">
+                ❤️ <span class="heart-count">${ann.hearts.length}</span>
+              </button>
+              <button class="announcement-card__action" onclick="toggleDetails('${ann._id}')" title="View comments (${ann.comments.length})">
+                💬 <span>${ann.comments.length}</span>
+              </button>
+            </div>
+            <div class="announcement-details" id="details-${ann._id}" style="display:none">
+              <div id="comments-${ann._id}"></div>
+              ${user ? `<div class="comment-form" style="display:flex;gap:.5rem;margin-top:1rem;flex-wrap:wrap;">
+                <textarea id="comment-text-${ann._id}" placeholder="Add a comment..." maxlength="500" style="flex:1;min-width:200px;padding:.6rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--radius-sm);color:var(--color-white);resize:vertical;"></textarea>
+                <button onclick="addComment('${ann._id}',event)" class="btn btn--primary" style="padding:.5rem 1rem;white-space:nowrap;flex-shrink:0;">Post Comment</button>
+              </div>` : ''}
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      // Re-attach event listeners after render
+      attachEventListeners();
+    }
+
+    function attachEventListeners() {
+      // View more/less
+      document.querySelectorAll('.ann-view-more-btn').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const wrapper = btn.closest('.announcement-card__body-wrapper');
+          const body = wrapper.querySelector('.announcement-card__body');
+          
+          if (wrapper.classList.contains('expanded')) {
+            wrapper.classList.remove('expanded');
+            body.textContent = body.dataset.full.slice(0, 250) + '...';
+            btn.textContent = 'View more ↓';
+          } else {
+            wrapper.classList.add('expanded');
+            body.textContent = body.dataset.full;
+            btn.textContent = 'View less ↑';
+          }
+        };
+      });
+
+      // Like/heart
+      document.querySelectorAll('[data-action]').forEach(btn => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const action = btn.dataset.action;
+          const id = btn.dataset.id;
+          try {
+            const data = await apiFetch(`/announcements/${id}/${action}`, { method: 'PATCH' });
+            btn.querySelector('span').textContent = data.likes ?? data.hearts;
+            btn.classList.toggle(`announcement-card__action--${action === 'like' ? 'liked' : 'hearted'}`);
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        };
+      });
+    }
+
+    window.toggleDetails = id => {
+      const details = document.getElementById(`details-${id}`);
+      details.style.display = details.style.display === 'none' ? 'block' : 'none';
+    };
+
+    window.addComment = async (id, e) => {
+      e.stopPropagation();
+      const textarea = document.getElementById(`comment-text-${id}`);
+      const text = textarea.value.trim();
+      if (!text) return showToast('Comment required', 'error');
+      try {
+        await apiFetch(`/announcements/${id}/comments`, {
+          method: 'POST',
+          body: JSON.stringify({ text })
+        });
+        textarea.value = '';
+        loadComments(id);
+        showToast('Comment posted!');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    };
+
+    async function loadComments(id) {
+      try {
+        const data = await apiFetch(`/announcements/${id}/comments`);
+        const container = document.getElementById(`comments-${id}`);
+        container.innerHTML = data.data.length ? data.data.map(c => `
+          <div style="padding:.8rem 0;border-bottom:1px solid rgba(255,255,255,.1);">
+            <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;">
+              ${c.author.profilePhoto ? `<img src="${c.author.profilePhoto}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">` : ''}
+              <div>
+                <strong>${escapeHtml(c.author.username)}</strong>
+                <small style="opacity:.6;margin-left:.3rem;">${new Date(c.createdAt).toLocaleString()}</small>
+              </div>
+            </div>
+            <p style="margin:0;">${escapeHtml(c.text)}</p>
+          </div>
+        `).join('') : '<p style="opacity:.6;text-align:center;">No comments yet.</p>';
+      } catch {
+        document.getElementById(`comments-${id}`).innerHTML = '<p>Error loading comments.</p>';
+      }
+    }
+
+    loadAnnouncements();
+  </script>
+</body>
+</html>
+
