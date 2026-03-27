@@ -489,9 +489,15 @@ input, textarea, select { font-family: var(--font-body); outline: none; }
 */
 .schedule-wrapper {
   display: grid;
-  grid-template-columns: 260px 160px 1fr;
-  gap: 1rem 1.5rem;
+  grid-template-columns: 200px 1fr;
+  gap: 0 1.5rem;
   align-items: start;
+}
+
+.schedule-sidebar {
+  position: sticky;
+  top: calc(var(--navbar-height) + 1rem);
+  padding: 1rem 0;
 }
 
 .calendar-rules {
