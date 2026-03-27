@@ -69,7 +69,7 @@
       try {
         const data = await apiFetch('/announcements');
         renderAnnouncements(data.data);
-        setTimeout(initAnnouncementToggles, 100);
+        setTimeout(initAnnouncementToggles, 200);
       } catch (err) {
         list.innerHTML = `<div class="empty-state"><div class="empty-state__icon">❌</div><p class="empty-state__text">${err.message}</p></div>`;
       }
@@ -114,7 +114,6 @@
                 <button onclick="addComment('${ann._id}', event); event.stopPropagation();" class="btn btn--primary btn-sm">Comment</button>
               </div>` : ''}
             </div>
-            </div>
           </article>
         `;
       }).join('');
@@ -127,16 +126,24 @@
     }
 
     function formatAnnouncementContent(content) {
-      return content.replace(/\\n/g, '<br>').replace(/&/g, '&amp;').replace(/</g, '<').replace(/>/g, '>');
+      return content.replace(/\\\\n/g, '<br>').replace(/&/g, '&amp;').replace(/</g, '<').replace(/>/g, '>');
     }
 
     function initAnnouncementToggles() {
       document.querySelectorAll('.announcement-card__body').forEach(body => {
         const fullContent = body.dataset.content;
-        const lines = fullContent.split('\\n').length;
-        if (lines > 4 || fullContent.length > 250) {
+        const newlines = (fullContent.match(/<br>/g) || []).length + 1;
+        if (newlines > 4 || fullContent.length > 250) {
           body.classList.add('announcement-card__body--long');
-          body.innerHTML += '<button class="ann-view-more-btn" onclick="toggleAnnContent(this); return false;">View more ↓</button>';
+          const btn = document.createElement('button');
+          btn.className = 'ann-view-more-btn';
+          btn.innerHTML = 'View more <span>↓</span>';
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            toggleAnnContent(btn);
+            return false;
+          };
+          body.appendChild(btn);
         }
       });
     }
@@ -145,10 +152,11 @@
       const body = btn.parentElement;
       if (body.classList.contains('announcement-card__body--expanded')) {
         body.classList.remove('announcement-card__body--expanded');
-        btn.textContent = 'View more ↓';
+        btn.innerHTML = 'View more <span>↓</span>';
+        btn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } else {
         body.classList.add('announcement-card__body--expanded');
-        btn.textContent = 'View less ↑';
+        btn.innerHTML = 'View less <span>↑</span>';
       }
     };
 
@@ -229,3 +237,4 @@
   </script>
 </body>
 </html>
+

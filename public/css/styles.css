@@ -330,13 +330,10 @@ input, textarea, select { font-family: var(--font-body); outline: none; }
 .ann-view-more-btn:hover {
   background: var(--color-primary);
   color: var(--color-navy);
-  transform: translateX(-50%) translateY(-1px);
+  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.25);
 }
 
-.ann-view-more-btn:hover {
-  background: rgba(0,0,0,0.25);
-}
 
 .announcement-card__footer {
   display: flex;
