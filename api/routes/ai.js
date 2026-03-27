@@ -44,7 +44,7 @@ const getMockAIResponse = async (message, userId) => {
   }
 
   if (msg.includes('schedule') || msg.includes('timetable')) {
-    return "The Schedule page shows a color-coded grid of all room availability. Green = available to book, Blue = unoccupied, Red = booked.";
+    return "The Schedule page shows a color-coded grid of all room availability. Green = available to book, Red = booked.";
   }
 
   if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey')) {

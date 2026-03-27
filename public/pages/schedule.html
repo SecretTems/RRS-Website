@@ -36,10 +36,6 @@
             Available to book
           </div>
           <div class="schedule-legend__item">
-            <div class="schedule-legend__dot schedule-legend__dot--unoccupied"></div>
-            Unoccupied
-          </div>
-          <div class="schedule-legend__item">
             <div class="schedule-legend__dot schedule-legend__dot--booked"></div>
             Booked
           </div>
@@ -183,9 +179,6 @@ const HOURS = ['7am','8am','9am','10am','11am','12pm','1pm','2pm','3pm','4pm','5
           if (booking) {
             slotClass = 'schedule-grid__slot--booked';
             title = `Booked ${booking.startTime}–${booking.endTime}`;
-          } else if (isToday && parseInt(h) < parseInt(nowHour)) {
-            slotClass = 'schedule-grid__slot--unoccupied';
-            title = 'Past / unoccupied';
           }
 
           html += `<div class="schedule-grid__slot ${slotClass}" title="${title}"></div>`;

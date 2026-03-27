@@ -16,7 +16,7 @@ router.get('/', protect, async (req, res) => {
 
     const bookings = await Booking.find({
       date: { $gte: dayStart, $lte: dayEnd },
-      status: { $in: ['confirmed', 'occupied'] }
+      status: 'confirmed'
     });
 
     const now = new Date();
@@ -25,18 +25,7 @@ router.get('/', protect, async (req, res) => {
     const roomsWithStatus = rooms.map((room) => {
       const roomBookings = bookings.filter((b) => b.room.toString() === room._id.toString());
 
-      let status = 'available';
-      if (roomBookings.length > 0) {
-        const activeBooking = roomBookings.find(
-          (b) => b.startTime <= currentTime && b.endTime >= currentTime
-        );
-        if (activeBooking) {
-          status = 'occupied';
-        } else {
-          const futureBooking = roomBookings.find((b) => b.startTime > currentTime);
-          if (futureBooking) status = 'booked';
-        }
-      }
+      const status = roomBookings.length > 0 ? 'booked' : 'available';
 
       return { ...room.toObject(), status };
     });
@@ -58,7 +47,7 @@ router.get('/schedule', protect, async (req, res) => {
 
     const bookings = await Booking.find({
       date: { $gte: dayStart, $lte: dayEnd },
-      status: { $in: ['confirmed', 'occupied'] }
+      status: 'confirmed'
     }).populate('user', 'username');
 
     res.json({ success: true, rooms, bookings });

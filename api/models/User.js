@@ -30,10 +30,12 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
-  profilePhoto: {
+profilePhoto: {
     type: String,
     default: null
   },
+  resetToken: String,
+  resetTokenExpiry: Date,
   createdAt: {
     type: Date,
     default: Date.now

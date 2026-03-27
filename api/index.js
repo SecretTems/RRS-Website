@@ -400,7 +400,7 @@ app.post('/api/ai/chat', protect, [body('message').trim().notEmpty().isLength({m
     } else if (msg.includes('cancel')) {
       response = "To cancel a booking, go to your Account page and click Cancel next to the booking.";
     } else if (msg.includes('schedule')) {
-      response = "The Schedule page shows a color-coded grid. Green = available, Blue = unoccupied, Red = booked.";
+      response = "The Schedule page shows a color-coded grid. Green = available, Red = booked.";
     } else if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey')) {
       response = "Hello! I'm the RRS Assistant. Ask me about available rooms, your bookings, or how to use the system!";
     } else {

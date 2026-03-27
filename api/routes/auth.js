@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -129,5 +131,115 @@ router.delete('/delete-account', protect, async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error.' });
   }
 });
+
+// Send email utility (for development, logs to console. Update with real SMTP in production)
+async function sendResetEmail(email, token, req) {
+  const resetUrl = `${req.protocol}://${req.get('host')}/reset-password.html?token=${token}&email=${email}`;
+  
+  const message = `
+    You requested a password reset for your RRS account.
+    
+    Click this link to reset your password: ${resetUrl}
+    
+    This link expires in 15 minutes.
+    
+    If you didn't request this, ignore this email.
+  `;
+
+  // For dev: console.log instead of send
+  console.log('=== PASSWORD RESET EMAIL ===');
+  console.log('To:', email);
+  console.log('Reset URL:', resetUrl);
+  console.log('Message:', message);
+  console.log('===========================');
+  
+  // Production example (uncomment & configure .env):
+  // let transporter = nodemailer.createTransporter({
+  //   service: 'gmail',
+  //   auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+  // });
+  // await transporter.sendMail({ from: process.env.EMAIL_USER, to: email, subject: 'RRS Password Reset', text: message });
+}
+
+// POST /api/auth/forgot-password
+router.post(
+  '/forgot-password',
+  [
+    body('email').isEmail().normalizeEmail().withMessage('Valid email is required')
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    try {
+      const { email } = req.body;
+      const user = await User.findOne({ email });
+
+      if (!user) {
+        // Don't reveal if email exists
+        return res.json({ success: true, message: 'Reset link sent to your email (if account exists).' });
+      }
+
+      // Generate token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 min
+
+      user.resetToken = resetToken;
+      user.resetTokenExpiry = resetTokenExpiry;
+      await user.save({ validateBeforeSave: false });
+
+      await sendResetEmail(email, resetToken, req);
+
+      res.json({ success: true, message: 'Password reset link sent to your email.' });
+    } catch (err) {
+      res.status(500).json({ success: false, message: 'Server error. Please try again.' });
+    }
+  }
+);
+
+// POST /api/auth/reset-password
+router.post(
+  '/reset-password',
+  [
+    body('email').isEmail().normalizeEmail(),
+    body('password')
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters')
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+      .withMessage('Password must contain uppercase, lowercase, and a number'),
+    body('token').notEmpty().withMessage('Token is required')
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    try {
+      const { email, password, token } = req.body;
+
+      const user = await User.findOne({ 
+        email, 
+        resetToken: token,
+        resetTokenExpiry: { $gt: Date.now() }
+      });
+
+      if (!user) {
+        return res.status(400).json({ success: false, message: 'Invalid or expired token.' });
+      }
+
+      user.password = password;
+      user.resetToken = undefined;
+      user.resetTokenExpiry = undefined;
+      await user.save();
+
+      res.json({ success: true, message: 'Password reset successful. Please login.' });
+    } catch (err) {
+      res.status(500).json({ success: false, message: 'Server error.' });
+    }
+  }
+);
 
 module.exports = router;

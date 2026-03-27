@@ -117,10 +117,9 @@
       }
       grid.innerHTML = rooms.map(room => {
         const isAvailable = room.status === 'available';
-        const isOccupied = room.status === 'occupied';
         const isBooked = room.status === 'booked';
-        const badgeClass = isAvailable ? 'available' : isBooked ? 'booked' : 'occupied';
-        const badgeLabel = isAvailable ? 'Available' : isBooked ? 'Booked' : 'Occupied';
+        const badgeClass = isAvailable ? 'available' : 'booked';
+        const badgeLabel = isAvailable ? 'Available' : 'Booked';
 
         return `
           <div class="room-card" data-id="${room._id}">
