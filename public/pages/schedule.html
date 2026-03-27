@@ -20,12 +20,7 @@
       </aside>
       </div>
 
-      <!-- Schedule grid -->
-      <div style="display: contents;">
-        <button class="schedule-date-btn" id="date-selector-btn">
-          📅 Select Date
-        </button>
-      </div>
+      <!-- Date button top left of schedule grid -->
 
       <div class="schedule-grid-wrapper">
 
@@ -185,7 +180,7 @@ const HOURS = ['7am','8am','9am','10am','11am','12pm','1pm','2pm','3pm','4pm','5
     const dateInput = document.getElementById('date-modal-input');
     const dateTodayBtn = document.getElementById('date-today-btn');
     const dateConfirmBtn = document.getElementById('date-confirm-btn');
-    const dateBtn = document.getElementById('date-selector-btn');
+    const dateBtn = document.querySelector('.schedule-date-btn');
 
     dateBtn.addEventListener('click', () => {
       dateOverlay.classList.add('modal-overlay--visible');
@@ -204,7 +199,6 @@ const HOURS = ['7am','8am','9am','10am','11am','12pm','1pm','2pm','3pm','4pm','5
         return;
       }
       selectedDate = dateObj;
-      renderCalendar();
       loadSchedule(dateInput.value);
       dateOverlay.classList.remove('modal-overlay--visible');
     });
