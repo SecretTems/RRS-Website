@@ -8,7 +8,20 @@ const { protect, adminOnly } = require('../middleware/auth');
 // GET /api/bookings/my - get current user's bookings
 router.get('/my', protect, async (req, res) => {
   try {
-    const bookings = await Booking.find({ user: req.user._id })
+    const { active } = req.query;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    const query = { user: req.user._id };
+    if (active === 'true') {
+      const nowStr = `${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`;
+      query.$or = [
+        { date: { $gt: today } },
+        { date: today, endTime: { $gt: nowStr }, status: 'confirmed' }
+      ];
+    }
+    
+    const bookings = await Booking.find(query)
       .sort({ date: -1, startTime: 1 })
       .populate('room', 'name number');
     res.json({ success: true, data: bookings });

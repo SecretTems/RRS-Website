@@ -166,16 +166,25 @@
           return;
         }
 
-        histList.innerHTML = data.data.map(b => `
-          <div class="booking-item" data-id="${b._id}">
-            <div class="booking-item__info">
-              <p class="booking-item__room">${escapeHtml(b.room.name)}</p>
-              <p class="booking-item__time">${formatDate(b.date)} · ${b.startTime}–${b.endTime}</p>
-              <p class="booking-item__time" style="margin-top:2px;">Status: <strong style="color:${b.status==='confirmed'?'#4caf50':b.status==='cancelled'?'#e03030':'#7b9cda'}">${b.status}</strong></p>
+        histList.innerHTML = data.data.map(b => {
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          const isPast = b.date < today || (b.date.toDateString() === today.toDateString() && b.endTime <= new Date().toTimeString().slice(0,5));
+          const statusDisplay = isPast ? 'completed' : b.status;
+          const statusColor = statusDisplay === 'completed' ? '#7b9cda' : statusDisplay === 'confirmed' ? '#4caf50' : statusDisplay === 'rejected' ? '#e03030' : '#7b9cda';
+          const canCancel = b.status === 'confirmed' && !isPast;
+          
+          return `
+            <div class="booking-item" data-id="${b._id}">
+              <div class="booking-item__info">
+                <p class="booking-item__room">${escapeHtml(b.room.name)}</p>
+                <p class="booking-item__time">${formatDate(b.date)} · ${b.startTime}–${b.endTime}</p>
+                <p class="booking-item__time" style="margin-top:2px;">Status: <strong style="color:${statusColor}">${statusDisplay}</strong></p>
+              </div>
+              ${canCancel ? `<button class="booking-item__cancel" data-cancel-id="${b._id}">Cancel</button>` : ''}
             </div>
-            ${b.status === 'confirmed' ? `<button class="booking-item__cancel" data-cancel-id="${b._id}">Cancel</button>` : ''}
-          </div>
-        `).join('');
+          `;
+        }).join('');
       } catch (err) {
         histList.innerHTML = `<div class="empty-state"><div class="empty-state__icon">❌</div><p class="empty-state__text">${err.message}</p></div>`;
       }

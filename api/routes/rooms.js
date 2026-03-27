@@ -14,9 +14,17 @@ router.get('/', protect, async (req, res) => {
     const dayStart = new Date(date.setHours(0, 0, 0, 0));
     const dayEnd = new Date(date.setHours(23, 59, 59, 999));
 
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const now = new Date();
+    
     const bookings = await Booking.find({
       date: { $gte: dayStart, $lte: dayEnd },
-      status: 'confirmed'
+      status: 'confirmed',
+      $or: [
+        { date: { $gt: today } },
+        { date: today, endTime: { $gt: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}` } }
+      ]
     });
 
     const now = new Date();
@@ -45,9 +53,17 @@ router.get('/schedule', protect, async (req, res) => {
     const dayStart = new Date(date.setHours(0, 0, 0, 0));
     const dayEnd = new Date(date.setHours(23, 59, 59, 999));
 
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const now = new Date();
+    
     const bookings = await Booking.find({
       date: { $gte: dayStart, $lte: dayEnd },
-      status: 'confirmed'
+      status: 'confirmed',
+      $or: [
+        { date: { $gt: today } },
+        { date: today, endTime: { $gt: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}` } }
+      ]
     }).populate('user', 'username');
 
     res.json({ success: true, rooms, bookings });
