@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RRS — AI Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+<body>
+
+  <main class="page" style="padding-top:1rem; padding-bottom:0;">
+    <div class="ai-chat" id="ai-chat">
+      <!-- Hero (shown until first message) -->
+      <div class="ai-chat__hero" id="ai-hero">
+        <div class="ai-chat__orb">
+          <svg class="ai-chat__orb-icon" viewBox="0 0 24 24" fill="#5b4fcf">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 7h2v6h-2zm0 8h2v2h-2z"/>
+          </svg>
+        </div>
+        <p style="color:rgba(255,255,255,0.5);font-size:0.85rem;">What would you like to know?</p>
+      </div>
+
+      <!-- Messages (hidden until first message) -->
+      <div class="ai-chat__messages" id="messages-container"></div>
+
+      <!-- Input area -->
+      <div class="ai-chat__input-area">
+        <input class="ai-chat__input" id="chat-input" type="text" placeholder="What would you like to know?" maxlength="500" autocomplete="off" />
+        <button class="ai-chat__send-btn" id="send-btn" title="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <span>© Copyright</span>
+    <span>PHINMA Araullo University.</span>
+    <span>All Rights Reserved.</span>
+  </footer>
+
+  <!-- Login prompt -->
+  <div class="modal-overlay" id="login-prompt-overlay">
+    <div class="modal modal--warning">
+      <div class="modal__icon">⚠️</div>
+      <h2 class="modal__title">Login Required</h2>
+      <p class="modal__text">You need to login before entering.</p>
+      <div class="modal__actions">
+        <a href="/pages/login.html" class="btn btn--primary btn--full">OK</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+  <script src="../js/utils.js"></script>
+  <script src="../js/navbar.js"></script>
+  <script>
+    injectNavbar('ai-chat');
+    requireAuth();
+
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+    const messagesContainer = document.getElementById('messages-container');
+    const aiHero = document.getElementById('ai-hero');
+    let hasStarted = false;
+
+    function appendMessage(text, role) {
+      if (!hasStarted) {
+        hasStarted = true;
+        aiHero.style.display = 'none';
+        messagesContainer.classList.add('ai-chat__messages--visible');
+      }
+
+      const msg = document.createElement('div');
+      msg.className = `ai-chat__message ai-chat__message--${role}`;
+      msg.innerHTML = `<div class="ai-chat__bubble">${escapeHtml(text)}</div>`;
+      messagesContainer.appendChild(msg);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function appendTyping() {
+      if (!hasStarted) {
+        hasStarted = true;
+        aiHero.style.display = 'none';
+        messagesContainer.classList.add('ai-chat__messages--visible');
+      }
+      const typing = document.createElement('div');
+      typing.className = 'ai-chat__message ai-chat__message--ai';
+      typing.id = 'typing-indicator';
+      typing.innerHTML = `<div class="ai-chat__typing"><span></span><span></span><span></span></div>`;
+      messagesContainer.appendChild(typing);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function removeTyping() {
+      const t = document.getElementById('typing-indicator');
+      if (t) t.remove();
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement('div'); d.textContent = str; return d.innerHTML;
+    }
+
+    async function sendMessage() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      chatInput.value = '';
+      sendBtn.disabled = true;
+
+      appendMessage(text, 'user');
+      appendTyping();
+
+      try {
+        const data = await apiFetch('/ai/chat', {
+          method: 'POST',
+          body: JSON.stringify({ message: text })
+        });
+        removeTyping();
+        appendMessage(data.response, 'ai');
+      } catch (err) {
+        removeTyping();
+        appendMessage('Sorry, I had trouble responding. Please try again.', 'ai');
+      } finally {
+        sendBtn.disabled = false;
+        chatInput.focus();
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    chatInput.focus();
+  </script>
+</body>
+</html>
