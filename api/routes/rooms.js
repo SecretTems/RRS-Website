@@ -43,7 +43,8 @@ router.get('/', protect, async (req, res) => {
 
     const roomsWithStatus = rooms.map((room) => {
       const roomBookings = bookings.filter((b) => b.room.toString() === room._id.toString());
-      const status = roomBookings.length > 0 ? 'booked' : 'available';
+      const hasCurrentOverlap = roomBookings.some((b) => b.startTime <= currentTimeStr && b.endTime > currentTimeStr);
+      const status = hasCurrentOverlap ? 'occupied' : 'available';
       return { ...room.toObject(), status };
     });
 

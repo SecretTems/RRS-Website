@@ -11,19 +11,25 @@ const getMockAIResponse = async (message, userId) => {
 
   if (msg.includes('available') || msg.includes('free') || msg.includes('book')) {
     const today = new Date();
-    const dayStart = new Date(today.setHours(0, 0, 0, 0));
-    const dayEnd = new Date(today.setHours(23, 59, 59, 999));
+    const dayStart = new Date(today);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(today);
+    dayEnd.setHours(23, 59, 59, 999);
+    const currentTimeStr = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`;
     const rooms = await Room.find({ isActive: true });
     const bookings = await Booking.find({
       date: { $gte: dayStart, $lte: dayEnd },
       status: { $in: ['confirmed', 'occupied'] }
     });
-    const bookedIds = [...new Set(bookings.map((b) => b.room.toString()))];
-    const available = rooms.filter((r) => !bookedIds.includes(r._id.toString()));
+    const available = rooms.filter((r) => {
+      const roomBookings = bookings.filter((b) => b.room.toString() === r._id.toString());
+      const hasCurrentOverlap = roomBookings.some((b) => b.startTime <= currentTimeStr && b.endTime > currentTimeStr);
+      return !hasCurrentOverlap;
+    }).map(r => r.name);
     if (available.length > 0) {
-      return `Currently available rooms today: ${available.map((r) => r.name).join(', ')}. You can book them from the Rooms page!`;
+      return `Currently available rooms (right now): ${available.join(', ')}. Book via Rooms page!`;
     }
-    return 'All rooms appear to be booked for today. Check the Schedule page for other available time slots.';
+    return 'All rooms currently occupied. Check Schedule for free slots later.';
   }
 
   if (msg.includes('my booking') || msg.includes('reservation')) {

@@ -79,18 +79,7 @@ router.post(
 
 
 
-      // Check for exclusive full-day block OR time overlap
-      const exclusiveConflict = await Booking.findOne({
-        room: roomId,
-        date: { $gte: dayStart, $lte: dayEnd },
-        exclusive: true
-      });
-      if (exclusiveConflict) {
-        return res.status(409).json({
-          success: false,
-          message: `Room is reserved for the entire day (approved booking). Try another date or room.`
-        });
-      }
+      // Time overlap check only (no full-day exclusive)
 
       const timeConflict = await Booking.findOne({
         room: roomId,
@@ -146,7 +135,6 @@ router.patch('/:id/approve', protect, adminOnly, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid booking or already processed.' });
     }
     booking.status = 'confirmed';
-    booking.exclusive = true; // Block entire day for this room once approved
     await booking.save();
     await booking.populate('room', 'name number');
     res.json({ success: true, data: booking });
