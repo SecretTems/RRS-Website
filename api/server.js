@@ -83,6 +83,15 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ success: false, message: 'Route not found.' });
 });
 
+// Global error handler - ensures JSON errors always
+app.use((err, req, res, next) => {
+  console.error('Global error:', err.stack);
+  res.status(err.status || 500).json({ 
+    success: false, 
+    message: err.message || 'Internal server error' 
+  });
+});
+
 // Local dev only
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
