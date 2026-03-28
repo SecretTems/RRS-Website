@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RRS — Rooms</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+<body>
+
+  <main class="page">
+    <div class="rooms-search">
+      <span class="rooms-search__icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input class="rooms-search__input" id="search-input" type="text" placeholder="Search room name or number" />
+    </div>
+
+    <div class="rooms-grid" id="rooms-grid">
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-state__icon">⏳</div>
+        <p class="empty-state__text">Loading rooms...</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <span>© Copyright</span>
+    <span>PHINMA Araullo University.</span>
+    <span>All Rights Reserved.</span>
+  </footer>
+
+  <!-- Login prompt -->
+  <div class="modal-overlay" id="login-prompt-overlay">
+    <div class="modal modal--warning">
+      <div class="modal__icon">⚠️</div>
+      <h2 class="modal__title">Login Required</h2>
+      <p class="modal__text">You need to login before entering.</p>
+      <div class="modal__actions">
+        <a href="/pages/login.html" class="btn btn--primary btn--full">OK</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Booking modal -->
+  <div class="modal-overlay" id="booking-modal-overlay">
+    <div class="modal">
+      <h2 class="modal__title" style="text-align:left; margin-bottom:1.2rem;">Book a Room</h2>
+      <p id="booking-room-name" style="color:var(--color-primary);font-weight:700;margin-bottom:1rem;"></p>
+      <form id="booking-form" novalidate>
+        <div class="booking-form__group">
+          <label class="booking-form__label">Date</label>
+          <input class="booking-form__input" type="date" id="booking-date" required />
+          <p class="auth-form__error-msg" id="booking-date-error"></p>
+        </div>
+
+        <!-- Rules notice box -->
+        <div class="booking-rules-notice">
+          <span class="booking-rules-icon">ℹ️</span>
+          Can't book on Sundays. Only 7:00–19:00. 
+          <strong>Approved bookings reserve your specific time slot only.</strong>
+        </div>
+
+        <div class="booking-form__row">
+          <div class="booking-form__group">
+            <label class="booking-form__label">Start Time</label>
+            <input class="booking-form__input" type="time" id="booking-start" required min="07:00" max="19:00" />
+          </div>
+          <div class="booking-form__group">
+            <label class="booking-form__label">End Time</label>
+            <input class="booking-form__input" type="time" id="booking-end" required min="07:00" max="19:00" />
+          </div>
+        </div>
+        <p class="auth-form__error-msg" id="booking-time-error"></p>
+        <div class="booking-form__group">
+          <label class="booking-form__label">Purpose (optional)</label>
+          <input class="booking-form__input" type="text" id="booking-purpose" placeholder="e.g. Study group, Meeting..." maxlength="120" />
+        </div>
+        <p class="auth-form__error-msg" id="booking-form-error"></p>
+        <div class="modal__actions" style="margin-top:1.2rem;">
+          <button type="button" class="btn btn--outline" id="booking-cancel-btn">Cancel</button>
+          <button type="submit" class="btn btn--primary" id="booking-submit-btn" style="flex:1;">Confirm Booking</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+  <style>
+    .booking-rules-notice {
+      background: linear-gradient(135deg, var(--color-navy-light) 0%, var(--color-navy) 100%);
+      border: 1px solid var(--color-primary-light);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 12px 0;
+      font-size: 0.9rem;
+      color: var(--color-primary);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .booking-rules-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    @media (max-width: 480px) {
+      .booking-rules-notice { 
+        font-size: 0.85rem; 
+        padding: 10px 12px; 
+        flex-direction: column;
+        gap: 4px;
+      }
+    }
+  </style>
+  <script src="../js/utils.js"></script>
+  <script src="../js/navbar.js"></script>
+  <script>
+    injectNavbar('rooms');
+    const user = requireAuth();
+
+    let allRooms = [];
+    let selectedRoomId = null;
+
+    const grid = document.getElementById('rooms-grid');
+    const searchInput = document.getElementById('search-input');
+    const bookingOverlay = document.getElementById('booking-modal-overlay');
+    const bookingCancelBtn = document.getElementById('booking-cancel-btn');
+    const bookingSubmitBtn = document.getElementById('booking-submit-btn');
+    const bookingForm = document.getElementById('booking-form');
+
+    // Pre-fill date with today
+    document.getElementById('booking-date').value = todayStr();
+    document.getElementById('booking-date').min = todayStr();
+
+    async function loadRooms() {
+      try {
+        const data = await apiFetch('/rooms');
+        allRooms = data.data;
+        renderRooms(allRooms);
+      } catch (err) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">❌</div><p class="empty-state__text">${err.message}</p></div>`;
+      }
+    }
+
+    function renderRooms(rooms) {
+      if (!rooms.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">🚪</div><p class="empty-state__text">No rooms found.</p></div>`;
+        return;
+      }
+      // Sort rooms numerically
+      const sorted = rooms.slice().sort((a, b) => parseInt(a.number) - parseInt(b.number));
+      grid.innerHTML = sorted.map(room => {
+        const isAvailable = room.status === 'available';
+        const isExclusive = room.status === 'exclusive';
+        const isBooked = room.status === 'booked';
+        const badgeClass = isAvailable ? 'available' : isExclusive ? 'exclusive' : 'booked';
+        const badgeLabel = isAvailable ? 'Available' : isExclusive ? 'Exclusive' : 'Booked';
+
+        return `
+          <div class="room-card" data-id="${room._id}">
+            <span class="room-card__badge room-card__badge--${badgeClass}">${badgeLabel}</span>
+            ${room.imageUrl ? `<img src="${room.imageUrl}" class="room-card__image" alt="${room.name}" onerror="this.classList.add('room-card__image--placeholder'); this.nextSibling.style.display='flex';" />` : ''}
+            <div class="room-card__image room-card__image--placeholder" style="background:#4a5580;display:${room.imageUrl ? 'none' : 'flex'};">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8892a4" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
+              </svg>
+            </div>
+            <div class="room-card__body">
+              <p class="room-card__name">${escapeHtml(room.name)}</p>
+              ${isAvailable
+                ? `<button class="room-card__btn room-card__btn--book" data-id="${room._id}" data-name="${escapeHtml(room.name)}">Book Now</button>`
+                : `<button class="room-card__btn room-card__btn--disabled" disabled>Can't Book</button>`
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement('div'); d.textContent = str; return d.innerHTML;
+    }
+
+    grid.addEventListener('click', (e) => {
+      const btn = e.target.closest('.room-card__btn--book');
+      if (!btn) return;
+      selectedRoomId = btn.dataset.id;
+      document.getElementById('booking-room-name').textContent = btn.dataset.name;
+      clearBookingErrors();
+      bookingOverlay.classList.add('modal-overlay--visible');
+    });
+
+    bookingCancelBtn.addEventListener('click', () => {
+      bookingOverlay.classList.remove('modal-overlay--visible');
+    });
+
+    bookingOverlay.addEventListener('click', (e) => {
+      if (e.target === bookingOverlay) bookingOverlay.classList.remove('modal-overlay--visible');
+    });
+
+    function clearBookingErrors() {
+      document.querySelectorAll('#booking-form .auth-form__error-msg').forEach(el => { el.textContent = ''; el.classList.remove('auth-form__error-msg--visible'); });
+    }
+
+    // Sunday validation on date change
+    document.getElementById('booking-date').addEventListener('change', function() {
+      const dateObj = new Date(this.value);
+      if (this.value && dateObj.getDay() === 0) {
+        showErr('booking-date-error', 'No bookings allowed on Sundays.');
+      } else {
+        const errEl = document.getElementById('booking-date-error');
+        errEl.textContent = '';
+        errEl.classList.remove('auth-form__error-msg--visible');
+      }
+    });
+
+    bookingForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearBookingErrors();
+
+      const date = document.getElementById('booking-date').value;
+      const dateObj = new Date(date);
+      if (dateObj.getDay() === 0) {
+        showErr('booking-date-error', 'No bookings allowed on Sundays.');
+        return;
+      }
+      const start = document.getElementById('booking-start').value;
+      const end = document.getElementById('booking-end').value;
+      const purpose = document.getElementById('booking-purpose').value.trim();
+
+      if (!date) {
+        showErr('booking-date-error', 'Please select a date.');
+        return;
+      }
+      if (!start || !end) {
+        showErr('booking-time-error', 'Please select start and end times.');
+        return;
+      }
+      if (end <= start) {
+        showErr('booking-time-error', 'End time must be after start time.');
+        return;
+      }
+
+      setLoading(bookingSubmitBtn, true);
+      try {
+        await apiFetch('/bookings', {
+          method: 'POST',
+          body: JSON.stringify({ roomId: selectedRoomId, date, startTime: start, endTime: end, purpose })
+        });
+        bookingOverlay.classList.remove('modal-overlay--visible');
+        showToast('Room booked successfully! 🎉', 'success');
+        loadRooms();
+      } catch (err) {
+        showErr('booking-form-error', err.message);
+        setLoading(bookingSubmitBtn, false);
+      }
+    });
+
+    function showErr(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.classList.add('auth-form__error-msg--visible');
+    }
+
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      const filtered = allRooms.filter(r => r.name.toLowerCase().includes(q) || r.number.toLowerCase().includes(q));
+      renderRooms(filtered);
+    });
+
+    loadRooms();
+  </script>
+</body>
+</html>
