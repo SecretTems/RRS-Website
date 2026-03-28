@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 
+
 const app = express();
 
 /*
@@ -214,6 +215,11 @@ app.get('/api/auth/me', protect, (req, res) => res.json({ success: true, user: r
 
 app.delete('/api/auth/delete-account', protect, async (req, res) => {
   try {
+    // Anonymize comments before deleting user
+    await Announcement.updateMany(
+      { "comments.author": req.user._id },
+      { $unset: { "comments.$[elem].author": "" } }
+    );
     await User.findByIdAndDelete(req.user._id);
     res.cookie('token', '', { maxAge: 0 });
     res.json({ success: true, message: 'Account deleted.' });
@@ -282,17 +288,30 @@ app.get('/api/rooms', protect, async (req, res) => {
     const date = new Date(dateStr);
     const dayStart = new Date(date); dayStart.setHours(0,0,0,0);
     const dayEnd = new Date(date); dayEnd.setHours(23,59,59,999);
-    const bookings = await Booking.find({ date:{$gte:dayStart,$lte:dayEnd}, status:{$in:['confirmed','occupied']} });
+    // Fetch ALL relevant bookings: confirmed/occupied + exclusive (any status if exclusive:true)
+    const bookings = await Booking.find({ 
+      date:{$gte:dayStart,$lte:dayEnd}, 
+      $or: [
+        { status:{$in:['confirmed','occupied']} },
+        { exclusive: true }
+      ] 
+    });
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
     const data = rooms.map(room => {
       const rb = bookings.filter(b => b.room.toString() === room._id.toString());
       let status = 'available';
-      if (rb.length) {
+      
+      // Check for exclusive first (full day block)
+      const exclusive = rb.find(b => b.exclusive);
+      if (exclusive) {
+        status = 'exclusive';
+      } else if (rb.length) {
         const active = rb.find(b => b.startTime <= currentTime && b.endTime >= currentTime);
         if (active) status = 'occupied';
         else if (rb.find(b => b.startTime > currentTime)) status = 'booked';
       }
+      
       return { ...room.toObject(), status };
     });
     res.json({ success: true, data });

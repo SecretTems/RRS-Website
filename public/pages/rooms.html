@@ -56,6 +56,13 @@
           <p class="auth-form__error-msg" id="booking-date-error"></p>
         </div>
 
+        <!-- Rules notice box -->
+        <div class="booking-rules-notice">
+          <span class="booking-rules-icon">ℹ️</span>
+          Can't book on Sundays. Only between 7:00–19:00. 
+          <strong>Approved bookings reserve the room for the entire day.</strong>
+        </div>
+
         <div class="booking-form__row">
           <div class="booking-form__group">
             <label class="booking-form__label">Start Time</label>
@@ -81,6 +88,33 @@
   </div>
 
   <div id="toast-container" class="toast-container"></div>
+  <style>
+    .booking-rules-notice {
+      background: linear-gradient(135deg, #f0f4ff 0%, #e3ecff 100%);
+      border: 1px solid #c0d2ff;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 12px 0;
+      font-size: 0.9rem;
+      color: #1e40af;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .booking-rules-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    @media (max-width: 480px) {
+      .booking-rules-notice { 
+        font-size: 0.85rem; 
+        padding: 10px 12px; 
+        flex-direction: column;
+        gap: 4px;
+      }
+    }
+  </style>
   <script src="../js/utils.js"></script>
   <script src="../js/navbar.js"></script>
   <script>
@@ -120,9 +154,10 @@
       const sorted = rooms.slice().sort((a, b) => parseInt(a.number) - parseInt(b.number));
       grid.innerHTML = sorted.map(room => {
         const isAvailable = room.status === 'available';
+        const isExclusive = room.status === 'exclusive';
         const isBooked = room.status === 'booked';
-        const badgeClass = isAvailable ? 'available' : 'booked';
-        const badgeLabel = isAvailable ? 'Available' : 'Booked';
+        const badgeClass = isAvailable ? 'available' : isExclusive ? 'exclusive' : 'booked';
+        const badgeLabel = isAvailable ? 'Available' : isExclusive ? 'Exclusive' : 'Booked';
 
         return `
           <div class="room-card" data-id="${room._id}">

@@ -79,7 +79,20 @@ router.post(
 
 
 
-      const conflict = await Booking.findOne({
+      // Check for exclusive full-day block OR time overlap
+      const exclusiveConflict = await Booking.findOne({
+        room: roomId,
+        date: { $gte: dayStart, $lte: dayEnd },
+        exclusive: true
+      });
+      if (exclusiveConflict) {
+        return res.status(409).json({
+          success: false,
+          message: `Room is reserved for the entire day (approved booking). Try another date or room.`
+        });
+      }
+
+      const timeConflict = await Booking.findOne({
         room: roomId,
         date: { $gte: dayStart, $lte: dayEnd },
         status: { $nin: ['cancelled', 'rejected'] },
@@ -87,11 +100,10 @@ router.post(
           { startTime: { $lt: endTime }, endTime: { $gt: startTime } }
         ]
       });
-
-      if (conflict) {
+      if (timeConflict) {
         return res.status(409).json({
           success: false,
-          message: `Conflict with existing booking from ${conflict.startTime} to ${conflict.endTime}. Choose different time slots.`
+          message: `Time conflict with ${timeConflict.status === 'pending' ? 'pending' : 'existing'} booking ${timeConflict.startTime}–${timeConflict.endTime}.`
         });
       }
 
@@ -134,6 +146,7 @@ router.patch('/:id/approve', protect, adminOnly, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid booking or already processed.' });
     }
     booking.status = 'confirmed';
+    booking.exclusive = true; // Block entire day for this room once approved
     await booking.save();
     await booking.populate('room', 'name number');
     res.json({ success: true, data: booking });
