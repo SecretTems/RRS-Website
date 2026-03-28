@@ -43,7 +43,10 @@ router.get('/', protect, async (req, res) => {
 
     const roomsWithStatus = rooms.map((room) => {
       const roomBookings = bookings.filter((b) => b.room.toString() === room._id.toString());
-      const status = roomBookings.length > 0 ? 'booked' : 'available';
+      const hasConflict = roomBookings.some(booking => 
+        booking.startTime < '19:00' && booking.endTime > '07:00'
+      );
+      const status = hasConflict ? 'booked' : 'available';
       return { ...room.toObject(), status };
     });
 

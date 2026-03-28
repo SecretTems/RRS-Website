@@ -1,4 +1,4 @@
-const express = require('express');
+pppppppppppppppppppppconst express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const Booking = require('../models/Booking');
@@ -69,33 +69,13 @@ router.post(
       const dayEnd = new Date(bookingDate.getTime());
       dayEnd.setHours(23, 59, 59, 999);
       // Block Sundays and Philippine holidays
-      const dayOfWeek = bookingDate.getDay();
+
       if (dayOfWeek === 0) { // Sunday
         return res.status(409).json({
           success: false,
           message: 'Bookings not allowed on Sundays.'
         });
-      }
 
-
-
-      // Check for exclusive full-day block OR time overlap
-      const exclusiveConflict = await Booking.findOne({
-        room: roomId,
-        date: { $gte: dayStart, $lte: dayEnd },
-        exclusive: true
-      });
-      if (exclusiveConflict) {
-        return res.status(409).json({
-          success: false,
-          message: `Room is reserved for the entire day (approved booking). Try another date or room.`
-        });
-      }
-
-      const timeConflict = await Booking.findOne({
-        room: roomId,
-        date: { $gte: dayStart, $lte: dayEnd },
-        status: { $nin: ['cancelled', 'rejected'] },
         $or: [
           { startTime: { $lt: endTime }, endTime: { $gt: startTime } }
         ]
@@ -145,8 +125,7 @@ router.patch('/:id/approve', protect, adminOnly, async (req, res) => {
     if (!booking || booking.status !== 'pending') {
       return res.status(400).json({ success: false, message: 'Invalid booking or already processed.' });
     }
-    booking.status = 'confirmed';
-    booking.exclusive = true; // Block entire day for this room once approved
+
     await booking.save();
     await booking.populate('room', 'name number');
     res.json({ success: true, data: booking });
