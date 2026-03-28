@@ -80,9 +80,11 @@
         </span>
         <input class="schedule-search__input" id="schedule-search-input" type="text" placeholder="Search rooms..." />
       </div>
+
       <button class="schedule-date-display" id="date-selector-btn">
-        📅 <span id="current-date-display"></span>
+        📅 <span id="current-date-display">Today</span>
       </button>
+
     </div>
 
     <div class="schedule-grid-wrapper">
@@ -159,8 +161,9 @@
 
     // Update date display
     function updateDateDisplay() {
-      dateDisplay.textContent = todayStr() === selectedDate.toISOString().split('T')[0] ? 'Today' : 
-        `${String(selectedDate.getMonth()+1).padStart(2,'0')}/${String(selectedDate.getDate()).padStart(2,'0')}`;
+const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      dateDisplay.textContent = `${month}/${day}`;
     }
 
     async function loadSchedule(dateStr) {
