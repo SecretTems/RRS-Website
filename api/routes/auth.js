@@ -124,7 +124,11 @@ router.get('/me', protect, async (req, res) => {
 // DELETE /api/auth/delete-account
 router.delete('/delete-account', protect, async (req, res) => {
   try {
-    await User.findByIdAndDelete(req.user._id);
+    const userId = req.user._id;
+    await Booking.deleteMany({ user: userId });
+    await Announcement.updateMany({}, { $pull: { comments: { author: userId } } });
+    await Announcement.deleteMany({ author: userId });
+    await User.findByIdAndDelete(userId);
     res.cookie('token', '', { maxAge: 0 });
     res.json({ success: true, message: 'Account deleted successfully.' });
   } catch (err) {

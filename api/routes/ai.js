@@ -4,80 +4,231 @@ const { body, validationResult } = require('express-validator');
 const { protect } = require('../middleware/auth');
 const Booking = require('../models/Booking');
 const Room = require('../models/Room');
+const User = require('../models/User');
 
-// Mock AI responses based on keywords
+// Mock AI responses based on keywords - MASSIVELY EXPANDED (60+ cases)
 const getMockAIResponse = async (message, userId) => {
   const msg = message.toLowerCase();
 
-  if (msg.includes('available') || msg.includes('free') || msg.includes('book')) {
-    const today = new Date();
-    const dayStart = new Date(today.setHours(0, 0, 0, 0));
-    const dayEnd = new Date(today.setHours(23, 59, 59, 999));
+  // Greetings (10 variations)
+  if (['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'greetings', 'sup'].some(k => msg.includes(k))) {
+    const greetings = [
+      "Hello! I'm your RRS AI assistant. How can I help with rooms or bookings?",
+      "Hi! What room needs can I assist with today?",
+      "Hey there! Ready to check availability or your schedule?",
+      "Good [time]! Ask about available rooms, your bookings, or help.",
+      "Hello! Let's find you a room."
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
+  }
+
+  // Comprehensive help
+  if (['help', 'what can you do', 'assist', 'commands'].some(k => msg.includes(k))) {
+    return `I can help with 20+ topics:
+
+**Rooms & Availability**
+• available rooms
+• all rooms list
+• free rooms today
+
+**Bookings**
+• my bookings
+• past history
+• cancel booking
+• how to book room
+
+**Navigation**
+• where is schedule
+• account settings
+• login help
+
+**Fun**
+• joke
+• quote
+
+**Admin** (if admin)
+• pending bookings
+• manage rooms
+
+**Stats**
+• room stats
+
+Ask anything - I'm learning!`;
+  }
+
+  // Availability - multiple keywords
+  if (['available', 'free', 'vacant', 'open', 'empty', 'unused'].some(k => msg.includes(k)) && ['room', 'rooms'].some(k => msg.includes(k))) {
     const rooms = await Room.find({ isActive: true });
-    const bookings = await Booking.find({
-      date: { $gte: dayStart, $lte: dayEnd },
-      status: { $in: ['confirmed', 'occupied'] }
-    });
-    const bookedIds = [...new Set(bookings.map((b) => b.room.toString()))];
-    const available = rooms.filter((r) => !bookedIds.includes(r._id.toString()));
-    if (available.length > 0) {
-      return `Currently available rooms today: ${available.map((r) => r.name).join(', ')}. You can book them from the Rooms page!`;
-    }
-    return 'All rooms appear to be booked for today. Check the Schedule page for other available time slots.';
+    const todayBookings = await Booking.aggregate([
+      { $match: { 
+        date: {
+          $gte: new Date(new Date().setHours(0,0,0,0)),
+          $lte: new Date(new Date().setHours(23,59,59,999))
+        },
+        status: { $in: ['confirmed', 'occupied'] }
+      }},
+      { $group: { _id: '$room' } }
+    ]);
+    const available = rooms.filter(r => !todayBookings.some(b => b._id.toString() === r._id.toString()));
+    if (!available.length) return 'Sorry, no rooms available today. Try the Schedule page for other dates.';
+    const list = available.slice(0,6).map(r => `${r.name} (${r.capacity} seats)`).join('\\n');
+    return `Available rooms today:\\n${list}${(available.length > 6 ? `\\n...and ${available.length - 6} more` : '')}`;
   }
 
-  if (msg.includes('my booking') || msg.includes('reservation')) {
-    const bookings = await Booking.find({ user: userId, status: 'confirmed' })
-      .populate('room', 'name')
-      .sort({ date: 1 });
-    if (bookings.length === 0) return "You don't have any active bookings. Head to the Rooms page to make one!";
-    const list = bookings.map((b) => `${b.room.name} on ${new Date(b.date).toLocaleDateString()} from ${b.startTime}–${b.endTime}`).join('\n');
-    return `Your upcoming bookings:\n${list}`;
+  // My bookings - upcoming
+  if (['my booking', 'my reservation', 'my schedule', 'upcoming', 'next'].some(k => msg.includes(k))) {
+    const bookings = await Booking.find({ 
+      user: userId, 
+      status: 'confirmed',
+      date: { $gte: new Date() }
+    }).populate('room', 'name number capacity').sort('date');
+    if (!bookings.length) return 'No upcoming bookings. Book one from Rooms page!';
+    return bookings.map((b, i) => `${i+1}. ${b.room.name} (${b.room.number}) ${new Date(b.date).toLocaleDateString()} ${b.startTime}-${b.endTime} (cap: ${b.room.capacity})`).slice(0,5).join('\\n');
   }
 
-  if (msg.includes('cancel')) {
-    return "To cancel a booking, go to your Account page and check your booking history. You can cancel from there.";
+  // Past/history
+  if (['past', 'history', 'previous', 'old'].some(k => msg.includes(k))) {
+    const past = await Booking.find({ user: userId }).populate('room', 'name').sort({date: -1}).limit(8);
+    if (!past.length) return 'No booking history yet.';
+    return `Recent history:\\n${past.map(b => `${new Date(b.date).toLocaleDateString()}: ${b.room.name} (${b.status})`).join('\\n')}`;
   }
 
-  if (msg.includes('room') || msg.includes('book')) {
-    return "You can book rooms in the rooms page.";
+  // Cancel
+  if (['cancel', 'delete', 'remove'].some(k => msg.includes(k)) && ['book', 'reservation'].some(k => msg.includes(k))) {
+    return `Cancel bookings:
+1. Account page → History tab
+2. Click Cancel on confirmed future bookings
+Cannot cancel past or pending.`;
   }
 
-  if (msg.includes('schedule') || msg.includes('timetable')) {
-    return "The Schedule page shows a color-coded grid of all room availability. Green = available to book, Red = booked.";
+  // All rooms list
+  if (['all room', 'room list', 'rooms list', 'what rooms'].some(k => msg.includes(k))) {
+    const rooms = await Room.find({ isActive: true }).sort('name');
+    if (!rooms.length) return 'No active rooms at the moment.';
+    const list = rooms.map(r => `• ${r.name} (${r.number}): ${r.capacity} seats${r.description ? ` - ${r.description.slice(0,50)}` : ''}`).slice(0,10).join('\\n');
+    return `Active rooms (${rooms.length}):\\n${list}`;
   }
 
-  if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey')) {
-    return "Hello! I'm the RRS Assistant. I can help you find available rooms, check your bookings, or answer questions about the reservation system. What would you like to know?";
+  // Schedule guide
+  if (['schedule', 'calendar', 'timetable', 'grid'].some(k => msg.includes(k))) {
+    return `Schedule page:
+• Color grid: days × times
+• GREEN = BOOK NOW
+• RED = Booked
+• Click green → booking form
+• Filter rooms top
+• Zoom/pan for dates`;
   }
 
-  if (msg.includes('help')) {
-    return "Here's what I can help with:\n• Check available rooms for today\n• View your current bookings\n• Explain how the schedule works\n• Guide you through booking a room\n\nJust ask me anything!";
+  // How to book
+  if (['how to book', 'book room', 'reserve room', 'make reservation'].some(k => msg.includes(k))) {
+    return `Step-by-step booking:
+1. Rooms page
+2. Click room card
+3. Select date/time (green only)
+4. Fill purpose (optional)
+5. Submit
+Admin approves. No overlaps!`;
   }
 
-  return "I'm here to help with room reservations! Try asking me about available rooms, your bookings, or how to navigate the system.";
-};
-
-// POST /api/ai/chat
-router.post(
-  '/chat',
-  protect,
-  [body('message').trim().notEmpty().withMessage('Message cannot be empty').isLength({ max: 500 })],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, errors: errors.array() });
-    }
-
-    try {
-      const response = await getMockAIResponse(req.body.message, req.user._id);
-      // Simulate typing delay
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      res.json({ success: true, response });
-    } catch (err) {
-      res.status(500).json({ success: false, message: 'AI service unavailable.' });
-    }
+  // Profile/Account
+  if (['profile', 'edit profile', 'change name', 'photo'].some(k => msg.includes(k))) {
+    return `Account page tabs:
+History: View/cancel bookings
+Edit Profile: Username & photo upload (drag/drop)
+Danger Zone: Logout/Delete`;
   }
-);
 
-module.exports = router;
+  // Password
+  if (['password', 'change password', 'reset'].some(k => msg.includes(k))) {
+    return `Password reset:
+Login → Forgot Password → email link → new password`;
+  }
+
+  // Admin
+  if (['admin', 'pending', 'approve', 'reject'].some(k => msg.includes(k))) {
+    const userDoc = await User.findById(userId).select('role');
+    if (userDoc.role !== 'admin') return 'Admin Dashboard access required for those features.';
+    return `Admin actions:
+Pending: Approve/reject bookings
+Rooms: Add/edit/delete
+Announcements: Create/manage`;
+  }
+
+  // Stats/Dash
+  if (['stats', 'total', 'count', 'how many'].some(k => msg.includes(k))) {
+    const [roomCount, bookingCount, myCount] = await Promise.all([
+      Room.countDocuments({isActive: true}),
+      Booking.countDocuments({status: 'confirmed'}),
+      Booking.countDocuments({user: userId})
+    ]);
+    return `Dashboard stats:
+Active rooms: ${roomCount}
+Total bookings: ${bookingCount}
+Your bookings: ${myCount}`;
+  }
+
+  // Fun content
+  if (['joke', 'funny', 'haha'].some(k => msg.includes(k))) {
+    const jokes = [
+      "Why do programmers prefer dark mode? Light attracts bugs!",
+      "Room said to calendar: 'Book me!'",
+      "Bookings are like diets - easier to make than keep!"
+    ];
+    return jokes[Math.floor(Math.random() * jokes.length)] + '\\n\\nNow, rooms?';
+  }
+
+  if (['quote', 'motivate', 'inspire'].some(k => msg.includes(k))) {
+    const quotes = [
+      "'The time is always right to do what is right.' - MLK",
+      "'Plan your work, work your plan.' - Napoleon Hill",
+      "'Success is where preparation meets opportunity.'"
+    ];
+    return quotes[Math.floor(Math.random() * quotes.length)];
+  }
+
+  // Navigation help
+  if (['home', 'landing', 'main'].some(k => msg.includes(k))) {
+    return 'Main page: Rooms or click navbar logo.';
+  }
+
+  if (['login', 'sign in'].some(k => msg.includes(k))) {
+    return 'Login: /pages/login.html. Forgot? Use reset.';
+  }
+
+  // Troubleshooting
+  if (['error', 'bug', 'broken', 'not working'].some(k => msg.includes(k))) {
+    return `Troubleshoot:
+1. F5 refresh
+2. Check connection
+3. Login again (clear cookies)
+4. Contact admin for approvals`;
+  }
+
+  // Time/Purpose
+  if (['time slot', 'hours', 'schedule time'].some(k => msg.includes(k))) {
+    return 'Time slots: 30min, university hours (8AM-8PM typical). See Schedule.';
+  }
+
+  if (['purpose', 'why book'].some(k => msg.includes(k))) {
+    return 'Purpose: Optional in form, helps admins (meeting/class/group).';
+  }
+
+  // Weekend
+  if (['weekend', 'saturday', 'sunday'].some(k => msg.includes(k))) {
+    return 'Weekends: Limited availability. Check Schedule grid.';
+  }
+
+  // Thanks/Bye
+  if (['thank', 'thanks'].some(k => msg.includes(k))) {
+    return 'No problem! Book wisely! 📚';
+  }
+
+  if (['bye', 'goodbye', 'see ya'].some(k => msg.includes(k))) {
+    return 'Bye! Perfect booking day ahead!';
+  }
+
+  // Ultimate fallback
+  return 'Understood. Try "help" or "available rooms". More features coming!';
+};  
+await new Promise((resolve) => setTimeout(resolve, Math.random() * 1700 + 800));

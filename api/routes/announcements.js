@@ -7,13 +7,24 @@ const { protect, adminOnly } = require('../middleware/auth');
 // GET /api/announcements - public
 router.get('/', async (req, res) => {
   try {
-    const announcements = await Announcement.find()
+    let announcements = await Announcement.find()
       .sort({ createdAt: -1 })
       .populate('author', 'username profilePhoto')
       .populate({
         path: 'comments.author',
         select: 'username profilePhoto'
       });
+    announcements = announcements.map(ann => {
+      const safeAnn = ann.toObject();
+      safeAnn.author = safeAnn.author || { username: '[Deleted User]', profilePhoto: null };
+      if (safeAnn.comments) {
+        safeAnn.comments = safeAnn.comments.map(c => {
+          c.author = c.author || { username: '[Deleted User]', profilePhoto: null };
+          return c;
+        });
+      }
+      return safeAnn;
+    });
     res.json({ success: true, data: announcements });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error.' });
@@ -25,7 +36,12 @@ router.get('/:id/comments', protect, async (req, res) => {
   try {
     const ann = await Announcement.findById(req.params.id).populate('comments.author', 'username profilePhoto');
     if (!ann) return res.status(404).json({ success: false, message: 'Announcement not found.' });
-    res.json({ success: true, data: ann.comments });
+    const safeComments = ann.comments.map(c => {
+      const safeC = c.toObject();
+      safeC.author = safeC.author || { username: '[Deleted User]', profilePhoto: null };
+      return safeC;
+    });
+    res.json({ success: true, data: safeComments });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error.' });
   }

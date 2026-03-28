@@ -20,7 +20,7 @@
         <button class="account__sidebar-item" data-panel="edit-profile">
           ✏️ Edit Profile
         </button>
-        <button class="account__sidebar-item" data-panel="ai-helper" onclick="if(confirm('Go to AI chat?')) window.location.href='/pages/ai-chat.html';">
+onclick="if(confirm('Go to AI chat?')){window.location.href='/pages/ai-chat.html';}else{sidebarItems.forEach(i=>i.classList.remove('account__sidebar-item--active'));panels.forEach(p=>p.classList.remove('account__panel--active'));const historyBtn=document.querySelector('[data-panel=\"history\"]');historyBtn.classList.add('account__sidebar-item--active');document.getElementById('panel-history').classList.add('account__panel--active');loadHistory();}"
           ✨ AI Helper
         </button>
         <button class="account__sidebar-item account__sidebar-item--danger" data-panel="danger">
