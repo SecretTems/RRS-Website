@@ -181,8 +181,9 @@ router.post(
         }
       });
 
-      const frontendUrl = process.env.FRONTEND_URL || 'https://rrs-website-eta.vercel.app';
-      const resetUrl = `${frontendUrl}/pages/reset-password.html?email=${encodeURIComponent(email)}&token=${resetToken}`;
+const frontendUrl = process.env.FRONTEND_URL || 'https://rss-website-eta.vercel.app';
+      const baseUrl = frontendUrl.replace(/\/pages\/[^\/]+\.html$/, '');
+      const resetUrl = `${baseUrl}/pages/reset-password.html?email=${encodeURIComponent(email)}&token=${resetToken}`;
 
 
       await transporter.sendMail({
@@ -234,9 +235,10 @@ router.post(
     try {
       const { email, password, token } = req.body;
 
+      const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
       const user = await User.findOne({ 
         email, 
-        resetToken: token,
+        resetToken: hashedToken,
         resetTokenExpiry: { $gt: Date.now() }
       });
 
