@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // MongoDB reuse connection across Vercel serverless cold starts
 let isConnected = false;
